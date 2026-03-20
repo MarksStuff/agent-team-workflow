@@ -1,1 +1,16 @@
+# Python
 .venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Tools
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Agent design worktree
+.agent-design/

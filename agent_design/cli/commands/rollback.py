@@ -20,7 +20,7 @@ console = Console()
     default=".",
     help="Path to target repository (default: current directory)",
 )
-def rollback(tag: str, repo_path: Path):
+def rollback(tag: str, repo_path: Path) -> None:
     """Roll back to a specific checkpoint.
 
     TAG: Checkpoint tag to roll back to (e.g., 'chk-phase-1')
@@ -62,4 +62,4 @@ def rollback(tag: str, repo_path: Path):
 
     except Exception as e:
         console.print(f"[bold red]✗ Error:[/bold red] {e}")
-        raise click.Abort()
+        raise click.Abort() from e

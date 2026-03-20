@@ -22,7 +22,7 @@ console = Console()
     default=".",
     help="Path to target repository (default: current directory)",
 )
-def feedback(comment: str, repo_path: Path):
+def feedback(comment: str, repo_path: Path) -> None:
     """Add human feedback directly to the discussion.
 
     COMMENT: Your feedback comment
@@ -30,7 +30,7 @@ def feedback(comment: str, repo_path: Path):
     asyncio.run(async_feedback(comment, repo_path))
 
 
-async def async_feedback(comment: str, repo_path: Path):
+async def async_feedback(comment: str, repo_path: Path) -> None:
     """Async implementation of feedback command."""
     repo_path = repo_path.resolve()
 
@@ -72,4 +72,4 @@ async def async_feedback(comment: str, repo_path: Path):
 
     except Exception as e:
         console.print(f"\n[bold red]✗ Error:[/bold red] {e}")
-        raise click.Abort()
+        raise click.Abort() from e

@@ -1,7 +1,7 @@
 """State management for agent design sessions."""
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -27,17 +27,12 @@ class RoundState:
     feature_slug: str
     feature_request: str
     target_repo: str
-    phase: PhaseType
+    phase: PhaseType = "baseline"
     discussion_turns: int = 0
     baseline_commit: str | None = None
-    completed: list[str] = None
+    completed: list[str] = field(default_factory=list)
     pr_url: str | None = None
     checkpoint_tag: str | None = None
-
-    def __post_init__(self):
-        """Initialize completed list if None."""
-        if self.completed is None:
-            self.completed = []
 
 
 def load_round_state(worktree_path: Path) -> RoundState:
@@ -62,7 +57,7 @@ def load_round_state(worktree_path: Path) -> RoundState:
             data = json.load(f)
         return RoundState(**data)
     except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON in ROUND_STATE.json: {e}")
+        raise ValueError(f"Invalid JSON in ROUND_STATE.json: {e}") from e
 
 
 def save_round_state(worktree_path: Path, state: RoundState) -> None:

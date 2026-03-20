@@ -5,7 +5,7 @@ from pathlib import Path
 from agent_design.agents.claude_agent import ClaudeAgent
 from agent_design.agents.configs import AGENT_CONFIGS
 from agent_design.agents.types import AgentType
-from agent_design.state import RoundState, load_round_state, save_round_state
+from agent_design.state import RoundState, save_round_state
 
 
 async def run_discussion_turn(worktree_path: Path, state: RoundState) -> bool:
@@ -127,10 +127,9 @@ Append your contribution to DISCUSSION.md following the format:
         print(f"[{agent_type.value.upper()}] Completed ({result.execution_time:.1f}s)")
 
         # Check for convergence declaration (Eng Manager only)
-        if agent_type == AgentType.ENG_MANAGER:
-            if "CONVERGENCE_DECLARED" in result.output:
-                convergence_declared = True
-                print("\n✓ Convergence declared by Eng Manager")
+        if agent_type == AgentType.ENG_MANAGER and "CONVERGENCE_DECLARED" in result.output:
+            convergence_declared = True
+            print("\n✓ Convergence declared by Eng Manager")
 
         # Increment discussion turn counter after each agent
         state.discussion_turns += 1

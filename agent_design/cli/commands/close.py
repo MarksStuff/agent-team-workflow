@@ -29,7 +29,7 @@ console = Console()
     is_flag=True,
     help="Delete the orphan branch (local and remote)",
 )
-def close(repo_path: Path, delete_branch: bool):
+def close(repo_path: Path, delete_branch: bool) -> None:
     """Close an agent design session.
 
     Removes worktree and optionally deletes the orphan branch.
@@ -87,4 +87,4 @@ def close(repo_path: Path, delete_branch: bool):
 
     except Exception as e:
         console.print(f"\n[bold red]✗ Error:[/bold red] {e}")
-        raise click.Abort()
+        raise click.Abort() from e

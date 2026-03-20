@@ -22,7 +22,7 @@ console = Console()
 @click.command()
 @click.argument("repo_path", type=click.Path(exists=True, file_okay=False, path_type=Path))
 @click.argument("feature_request", type=str)
-def init(repo_path: Path, feature_request: str):
+def init(repo_path: Path, feature_request: str) -> None:
     """Initialize a new agent design session.
 
     REPO_PATH: Path to target repository
@@ -31,7 +31,7 @@ def init(repo_path: Path, feature_request: str):
     asyncio.run(async_init(repo_path, feature_request))
 
 
-async def async_init(repo_path: Path, feature_request: str):
+async def async_init(repo_path: Path, feature_request: str) -> None:
     """Async implementation of init command."""
     repo_path = repo_path.resolve()
 
@@ -44,9 +44,7 @@ async def async_init(repo_path: Path, feature_request: str):
     # Check for existing worktree
     existing_worktree = detect_existing_worktree(repo_path)
     if existing_worktree:
-        console.print(
-            "[yellow]⚠ Existing .agent-design worktree detected. Use 'agent-design resume' instead.[/yellow]"
-        )
+        console.print("[yellow]⚠ Existing .agent-design worktree detected. Use 'agent-design resume' instead.[/yellow]")
         return
 
     try:
@@ -94,10 +92,10 @@ async def async_init(repo_path: Path, feature_request: str):
         console.print("✓ Checkpoint: chk-phase-1")
 
         console.print("\n[bold green]✓ Initialization complete![/bold green]")
-        console.print(f"\nNext steps:")
+        console.print("\nNext steps:")
         console.print("  1. Review DESIGN.md in .agent-design/")
         console.print("  2. Run 'agent-design next' to start discussion phase")
 
     except Exception as e:
         console.print(f"\n[bold red]✗ Error:[/bold red] {e}")
-        raise click.Abort()
+        raise click.Abort() from e

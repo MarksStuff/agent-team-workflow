@@ -20,7 +20,7 @@ console = Console()
     default=".",
     help="Path to target repository (default: current directory)",
 )
-def status(repo_path: Path):
+def status(repo_path: Path) -> None:
     """Show current session status."""
     repo_path = repo_path.resolve()
 
@@ -53,4 +53,4 @@ def status(repo_path: Path):
 
     except Exception as e:
         console.print(f"[bold red]✗ Error:[/bold red] {e}")
-        raise click.Abort()
+        raise click.Abort() from e

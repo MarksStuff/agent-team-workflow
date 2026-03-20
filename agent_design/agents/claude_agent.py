@@ -5,7 +5,6 @@ import os
 import time
 import uuid
 from pathlib import Path
-from uuid import UUID
 
 from agent_design.agents.base import BaseAgent
 from agent_design.agents.configs import AgentConfig
@@ -57,9 +56,7 @@ class ClaudeAgent(BaseAgent):
         if api_key_file.exists():
             return api_key_file.read_text().strip()
 
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY not found. Set the environment variable or create ~/.anthropic_api_key"
-        )
+        raise RuntimeError("ANTHROPIC_API_KEY not found. Set the environment variable or create ~/.anthropic_api_key")
 
     @staticmethod
     def build_claude_command(
@@ -182,7 +179,7 @@ class ClaudeAgent(BaseAgent):
                     session_id=session_id,
                 )
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             execution_time = time.time() - start_time
             error_msg = f"Agent execution timed out after {timeout} seconds"
             return AgentExecutionResult(

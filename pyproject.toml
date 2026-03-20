@@ -10,6 +10,16 @@ dependencies = [
     "rich>=13.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-mock>=3.12",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "pre-commit>=3.0",
+]
+
 [project.scripts]
 agent-design = "agent_design.cli.main:cli"
 
@@ -19,3 +29,62 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["agent_design"]
+
+# ---------------------------------------------------------------------------
+# Ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "A",   # flake8-builtins (no shadowing builtins)
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long, handled by ruff format
+    "B008",  # function calls in argument defaults
+]
+exclude = [".git", "__pycache__", "build", "dist", ".venv"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]   # allow unused imports in __init__.py
+"tests/*.py"  = ["B011"]   # allow assert False in tests
+
+[tool.ruff.lint.isort]
+known-first-party = ["agent_design"]
+
+# ---------------------------------------------------------------------------
+# Mypy
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+packages = ["agent_design"]
+exclude = ["^\\.venv/", "^build/"]
+
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+warn_return_any = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+strict_optional = true
+show_error_codes = true
+pretty = true
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = ["-v", "--tb=short"]
