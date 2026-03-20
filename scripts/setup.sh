@@ -33,6 +33,13 @@ else
     echo "✅ claude CLI: $(claude --version 2>/dev/null | head -1)"
 fi
 
+if [ ! -f "$HOME/.anthropic_api_key" ]; then
+    echo "⚠️  ~/.anthropic_api_key not found — agents will not be able to call Claude."
+    echo "   Create it: echo 'sk-ant-...' > ~/.anthropic_api_key && chmod 600 ~/.anthropic_api_key"
+else
+    echo "✅ ~/.anthropic_api_key present"
+fi
+
 if ! command -v gh &>/dev/null; then
     echo "⚠️  gh CLI not found — PR integration will not work."
     echo "   Install from: https://cli.github.com"
