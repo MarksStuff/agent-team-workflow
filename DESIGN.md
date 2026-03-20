@@ -1,141 +1,283 @@
 # Agent Team Workflow — Design Document
 
-> **Status:** Draft — open questions marked 🔴, decisions made marked ✅
+> **Status:** v4 — Final design. All major decisions resolved.
 
 ---
 
 ## Goals
 
 - Get genuinely independent perspectives on a feature design before any code is written
-- Make the agents' reasoning and disagreements visible in plain text (not a black box)
-- Allow the human (Mark) to chime in at any point — via GitHub PR comments
-- Support checkpoint and rollback so a bad prompt or crash doesn't lose progress
+- Replicate the dynamics of a real engineering design review — not a pipeline dressed up as collaboration
+- Make agents' reasoning, disagreements, and resolutions visible in plain text
+- Allow the human (Mark) to chime in at any point, naturally
+- Support checkpoint and rollback so a crash or bad prompt doesn't lose progress
 - Produce two durable artifacts per feature: a **Design Doc** and a **Decision Log**
 
 ---
 
-## The Four Agents
+## Core Design Principle
 
-### Lead (Orchestrator)
-Not a design contributor. Responsible for sequencing the workflow, enforcing
-phase boundaries (especially isolation in Round 1), writing state to disk,
-committing checkpoints, and routing human feedback back into the next round.
+**Structure lives at the boundaries. The discussion is free-form.**
 
-### Architect
-Focuses on: system boundaries, data flow, component responsibilities, extension
-points, consistency with existing patterns, long-term maintainability. In Round 0,
-the Architect performs the codebase analysis and writes `BASELINE.md`.
+The Eng Manager manages phase transitions, checkpoints, and facilitation. Inside the
+discussion itself, agents speak when they have something to say, respond to each other
+directly, and the conversation ends when there's nothing left to disagree about —
+not because a round counter hit a predetermined limit.
 
-### Developer
-Focuses on: concrete implementation approach, API shape, error handling, edge
-cases, what's actually straightforward vs. deceptively hard to build, naming.
+**All state lives in files. Session memory is ephemeral and untrusted.**
 
-### Tester / Test-First Engineer
-Focuses on: testability of the proposed design, what the test surface looks like,
-which behaviors are hard to test and why, missing contracts, observability hooks.
-Approaches design from the outside-in — what does a caller need? What can break?
+Agent sessions are stateless workers. They read inputs from files, write outputs to
+files, and never rely on their conversation history surviving a crash or restart. Every
+phase is independently replayable.
+
+---
+
+## The Five Agents
+
+### Eng Manager (Facilitator & Orchestrator)
+
+The Eng Manager is the team lead. It does **not** own the design — the Architect does.
+The Eng Manager's job is to make the design process work well.
+
+**Facilitation responsibilities:**
+- Ensures every agent contributes — explicitly calls on silent agents:
+  *"Developer, you haven't weighed in on the caching strategy — what's your view?"*
+- Keeps discussion grounded in facts and data, not opinions. When an agent says
+  *"we should never use X"* or *"X is always a mistake"*, the Eng Manager pushes back:
+  *"Can you ground that in a specific concern about this design? What breaks concretely?"*
+- Facilitates disagreements rather than resolving them programmatically:
+  *"Architect and Code Quality Engineer disagree on interface placement. Architect —
+  what would it take for you to accept the alternative approach?"*
+- Recognizes convergence: when no new substantive objections have been raised,
+  the Eng Manager asks the team if they're ready to finalize the design.
+- Can express its own opinions, but always leads with facilitation over advocacy.
+
+**Orchestration responsibilities:**
+- Manages phase transitions, checkpoint commits, and `ROUND_STATE.json`
+- Reads Mark's GitHub PR feedback and surfaces it to the team
+- Opens and updates the PR in the target repo
+- Manages the `agent-design` CLI interface
+
+---
+
+### Architect (Design Owner)
+
+The Architect is the primary owner of the design. This is the "lead engineer" role
+from a real engineering team.
+
+**Responsibilities:**
+- Understands the problem space — crisp requirements and non-requirements before
+  writing anything
+- Performs the initial codebase analysis and writes `BASELINE.md`
+- Writes the **first draft of `DESIGN.md`** based on the feature request and baseline
+- Participates actively in the design discussion, focused on system boundaries, data
+  flow, component responsibilities, extension points, and long-term maintainability
+- Updates `DESIGN.md` iteratively as consensus forms during discussion
+
+---
+
+### Developer (Implementation Focus)
+
+**Responsibilities:**
+- Focuses on the practicalities of building the feature: API shape, error handling,
+  edge cases, naming, what's straightforward vs. deceptively hard to implement
+- Calls out design choices that look clean on paper but will be painful to build —
+  with specific, concrete reasons
+- Pushes for pragmatic, efficient solutions that fit the existing codebase patterns
+
+---
+
+### QA Engineer (Outside-In Quality)
+
+**Responsibilities:**
+- Approaches the design from the outside-in: does this design actually satisfy the
+  requirements? What happens at the boundary cases? How do we verify the end-to-end
+  flow works?
+- Defines acceptance criteria and integration test scenarios from the spec
+- Identifies under-specified behaviors (what happens when X fails? what are the
+  observable contracts?)
+- Focuses on what a user or external caller can observe and test — not on
+  the internal implementation
+
+---
+
+### Code Quality Engineer (Inside-Out Testability)
+
+**Responsibilities:**
+- Focuses on making the code itself unit-testable: dependency injection, interface
+  design, mock boundaries, and avoiding hidden dependencies
+- Every complex object must have an abstract protocol/interface that can be
+  implemented as both a production version and a mock — calls this out when missing
+- Pushes back on designs where logic is tightly coupled and untestable by construction
+- Complements the QA Engineer: QA asks *"can we test the behavior?"*, Code Quality
+  asks *"can we test the units?"*
 
 ---
 
 ## Workflow Phases
 
-### Round 0 — Codebase Baseline
+### Phase 0 — Session Init & Codebase Baseline
 
-**Who:** Architect (solo)
-**Input:** Feature request, path to codebase, last analyzed commit (if updating)
-**Output:** `BASELINE.md` (created or incrementally updated)
+**Who:** `agent-design init` → Architect (solo)
+**Input:** Feature request, path to target repo
+**Output:** Initialized worktree, `ROUND_STATE.json`, `BASELINE.md`
 
-The Architect reads the existing codebase and writes a shared baseline document
-covering:
-- Relevant directory structure and file layout
+`agent-design init <repo-path> "<feature request>"` sets up the git worktree and
+orphan branch (see Checkpoint section), then spawns the Architect to analyze the
+codebase.
+
+The Architect reads the existing codebase and writes `BASELINE.md`, covering:
+- Relevant directory structure and key files
 - Language, framework, and dependency conventions
 - Dominant patterns (naming, error handling, async style, logging)
-- Key existing components that the feature will interact with
-- Anything surprising or non-obvious that a new contributor should know
+- Existing components the feature will interact with
+- Anything non-obvious a new contributor should know
 
 **Incremental updates:** `BASELINE.md` stores the last analyzed commit ID in its
-header. On subsequent runs (e.g. after merging new PRs), the Architect checks
-`git log <last-commit>..HEAD --name-only` to find what changed and only
-re-analyzes those sections — rather than re-reading the entire codebase.
+header. On subsequent runs (e.g. after new PRs have been merged), the Architect
+checks `git log <last-commit>..HEAD --name-only` and only re-analyzes changed
+sections.
 
 ```markdown
 <!-- baseline-commit: abc123def456 -->
-<!-- baseline-updated: 2026-03-18 -->
+<!-- baseline-updated: 2026-03-20 -->
 # Baseline — news_reader
 ...
 ```
 
-All three specialist agents read `BASELINE.md` before doing any design work.
-This ensures they share the same factual understanding of the codebase.
+All agents read `BASELINE.md` before doing any design work.
 
-**Checkpoint:** `chk-round-0` after `BASELINE.md` is written.
+**Checkpoint:** `chk-phase-0` after `BASELINE.md` is written.
 
 ---
 
-### Round 1 — Independent Design Drafts
+### Phase 1 — Initial Design Draft
 
-**Who:** Architect, Developer, Tester (sequentially spawned, isolated)
+**Who:** Architect (solo)
 **Input:** Feature request + `BASELINE.md`
-**Output:** `drafts/architect.md`, `drafts/developer.md`, `drafts/tester.md`
+**Output:** First draft of `DESIGN.md`, empty `DECISIONS.md`
 
-The Lead spawns agents **one at a time** and does not give the next agent its
-task until the previous one has finished writing its draft file. This guarantees
-isolation without relying on prompt discipline alone.
+The Architect writes the initial design document. Before writing, it sharpens
+the requirements: what is explicitly in scope, what is explicitly out of scope,
+and what assumptions are being made. These become the opening section of `DESIGN.md`.
 
-Sequence:
-1. Lead spawns Architect → waits for `drafts/architect.md` to appear on disk
-2. Lead spawns Developer → waits for `drafts/developer.md` to appear on disk
-3. Lead spawns Tester → waits for `drafts/tester.md` to appear on disk
-4. All three drafts exist → checkpoint → proceed to Round 2
+`DESIGN.md` first draft covers at minimum:
+- Feature scope: requirements and non-requirements
+- Proposed approach and architecture
+- Key components and their responsibilities
+- Data flow and interface contracts
+- Open questions the Architect wants the team to weigh in on
 
-Each draft covers:
-- Proposed design / approach
-- Key decisions and why
-- Concerns or risks
-- What they'd want to know from the other agents
-
-**Checkpoint:** `chk-round-1` after all three drafts are written.
+**Checkpoint:** `chk-phase-1` after `DESIGN.md` v1 is written.
 
 ---
 
-### Round 2 — Debate and Synthesis
+### Phase 2 — Design Review (Open Discussion)
 
-**Who:** All three agents + Lead
-**Input:** All three drafts
-**Output:** `DESIGN.md`, `DECISIONS.md`
+**Who:** Eng Manager (facilitating) + Architect, Developer, QA Engineer, Code Quality Engineer
+**Input:** `DESIGN.md` v1, `BASELINE.md`
+**Output:** Iteratively refined `DESIGN.md`, populated `DECISIONS.md`, `DISCUSSION.md`
 
-The Lead surfaces disagreements between the drafts and routes them to the
-relevant agents for direct debate. Agents can agree, push back, or propose
-a compromise. The Lead captures every resolution in `DECISIONS.md` — including
-disagreements that resolved easily, not just hard cases.
+This is the design review meeting. All agents read the current `DESIGN.md` and the
+shared `DISCUSSION.md` thread, then contribute freely.
 
-After debate converges, the Lead writes the merged `DESIGN.md`.
+#### The Shared Discussion Thread
 
-`DECISIONS.md` entry format:
+All agents communicate through a single **`DISCUSSION.md`** file — a chronological
+thread that all agents can read and append to. There is no separate per-agent draft
+or structured review template. Agents respond to the design, to each other's
+specific points, and raise new concerns as they arise.
+
+Each entry is tagged with the contributing agent:
+
+```markdown
+## [Architect]
+The proposed queue interface assumes single-consumer semantics, which should
+hold for now. However, if we ever need parallel consumers we'll have a problem
+with the current ack strategy...
+
+## [Developer]
+Agree on the interface, but `MessageQueue.consume()` returning `AsyncStream`
+will be painful to mock in tests. Can we use a callback/closure instead?
+
+## [Code Quality Engineer]
+Developer raises a valid point. More specifically: `AsyncStream` with custom
+continuation is hard to inject in unit tests because the stream lifecycle is
+opaque. A delegate or closure-based contract would let us inject a fake
+source trivially. I'd push for that.
+
+## [Eng Manager]
+QA Engineer — you've been quiet on the queue design. From an acceptance
+testing perspective, does single-consumer semantics give you what you need
+to write meaningful integration tests?
 ```
+
+#### Eng Manager's Role in the Discussion
+
+The Eng Manager reads the thread continuously and intervenes to:
+1. **Call on silent agents** — if any agent hasn't spoken on a significant topic,
+   the Eng Manager explicitly asks for their view
+2. **Redirect opinion to fact** — when an agent asserts a preference without
+   grounding it in a concrete concern, the Eng Manager asks them to be specific
+3. **Name disagreements** — when two agents disagree, the Eng Manager surfaces
+   the disagreement clearly and asks each side to state what evidence or
+   constraints would change their mind
+4. **Drive to resolution** — disagreements that are circling should be broken
+   by asking: *"What's the minimum we need to decide now vs. what can be
+   deferred to implementation?"*
+5. **Update artifacts** — as consensus forms, the Eng Manager (or Architect,
+   for design content) updates `DESIGN.md` and captures each resolution in
+   `DECISIONS.md`
+
+#### Convergence
+
+The discussion continues until the Eng Manager determines convergence: no new
+substantive objections have been raised in the most recent exchange. The Eng
+Manager then asks each agent explicitly: *"Any unresolved concerns before we
+finalize?"* If silence or agreement, the phase closes.
+
+#### `DECISIONS.md` Entry Format
+
+```markdown
 ## Decision: <short title>
 
-**Disagreement:** <what the agents disagreed on>
-**Architect:** ...
-**Developer:** ...
-**Tester:** ...
+**Disagreement:** <what was at stake>
+**Positions:**
+- Architect: ...
+- Developer: ...
+- QA Engineer: ...
+- Code Quality Engineer: ...
 **Resolution:** <what was decided and why>
-**Still open:** <anything left for human review>
+**Deferred:** <anything explicitly left for implementation or human review>
 ```
 
-The Lead opens a PR against the target repo's `main` branch containing only:
+**Checkpoint:** `chk-phase-2` when discussion converges and artifacts are finalized.
+
+---
+
+### Phase 3 — GitHub PR
+
+**Who:** Eng Manager
+**Input:** Final `DESIGN.md`, `DECISIONS.md`
+**Output:** PR against target repo's `main`
+
+The Eng Manager commits the finalized design artifacts to the target repo and
+opens a PR containing:
 - `docs/design/<feature-slug>/DESIGN.md`
 - `docs/design/<feature-slug>/DECISIONS.md`
 
-**Checkpoint:** `chk-round-2` before the PR is opened.
+The PR description summarizes the feature, key decisions made, and any items
+explicitly flagged for human input.
+
+**Checkpoint:** `chk-phase-3` after PR is opened.
 
 ---
 
-### Round N — Human Feedback Loop
+### Phase 4+ — Human Feedback Loop
 
-**Who:** Mark (in GitHub PR UI), then all agents
-**Input:** Mark's PR comments + current `DESIGN.md` + `DECISIONS.md`
-**Output:** Updated `DESIGN.md`, updated `DECISIONS.md`, `feedback/round-N-mark.md`
+**Who:** Mark (GitHub PR UI) → Eng Manager + agent team
+**Input:** Mark's PR comments
+**Output:** Updated `DESIGN.md`, updated `DECISIONS.md`, push to PR
 
 Mark reviews the PR and leaves comments. When ready:
 
@@ -143,24 +285,36 @@ Mark reviews the PR and leaves comments. When ready:
 agent-design next
 ```
 
-The Lead fetches PR comments via `gh` and writes them to
-`feedback/round-N-mark.md`. Agents read the feedback, respond to each point,
-and the Lead updates the documents and pushes to the PR.
+The Eng Manager fetches PR comments via `gh`, writes them to
+`feedback/human-round-<N>.md`, and surfaces them in `DISCUSSION.md` as a new
+thread entry. The agents respond directly to Mark's points. The Eng Manager
+facilitates the same way as Phase 2 — keeping discussion grounded, calling on
+silent agents, driving to resolution.
+
+The Architect updates `DESIGN.md` as consensus forms. The Eng Manager pushes
+the updated artifacts to the PR.
 
 This repeats until Mark approves.
 
-**Checkpoint:** `chk-round-N` after each human feedback round.
+**Checkpoint:** `chk-phase-4`, `chk-phase-5`, etc. — one per human feedback round.
 
 ---
 
 ### Session Close
 
-When the PR is merged, the Lead:
-1. Updates `ROUND_STATE.json` with `"phase": "complete"`
-2. Makes a final checkpoint commit
-3. The CLI cleans up the git worktree and orphan branch from the target repo
+When the PR is merged:
 
-The design artifacts persist permanently in the target repo at
+```bash
+agent-design close
+```
+
+The CLI:
+1. Sets `ROUND_STATE.json` `"phase": "complete"`
+2. Makes a final checkpoint commit and tag
+3. Removes the git worktree: `git worktree remove .agent-design`
+4. Deletes the orphan branch (locally and remote, with confirmation)
+
+Design artifacts persist permanently in the target repo at
 `docs/design/<feature-slug>/`.
 
 ---
@@ -173,75 +327,66 @@ Implemented in **Python**. Installed from this repo. Invoked as `agent-design`.
 # Start a new design session
 agent-design init <repo-path> "<feature request>"
 
-# Show current round, phase, and checkpoint state
+# Show current phase, agents, and checkpoint state
 agent-design status
 
-# Trigger the next round (run after reviewing PR)
+# Trigger the next phase (run after reviewing the PR)
 agent-design next
+
+# Add human feedback directly from CLI (appends to DISCUSSION.md)
+agent-design feedback "<your comment>"
 
 # List all checkpoints for the current session
 agent-design checkpoints
 
 # Roll back to a specific checkpoint and restart from there
-agent-design rollback chk-round-1
+agent-design rollback chk-phase-1
 
-# Diff the session state between two checkpoints
-agent-design diff chk-round-1 chk-round-2
+# Diff the working tree against a checkpoint
+agent-design diff chk-phase-1
+
+# Re-attach to an existing session from a fresh terminal
+agent-design resume <repo-path>
 
 # Clean up worktree and orphan branch after session is complete
 agent-design close
 ```
 
-> 🔴 **Open:** Additional commands needed? e.g. `agent-design resume` to
-> re-attach to an existing session from a fresh terminal.
-
 ---
 
 ## Checkpoint and Rollback
 
-### Design Principle
-
-**All state lives in files. Session memory is ephemeral and untrusted.**
-
-Agent sessions are treated as stateless workers. They read inputs from files,
-write outputs to files, and never rely on their conversation history surviving
-a crash or restart. This makes every round independently replayable.
-
 ### Storage: Orphan Branch + Git Worktree
 
-Session state is stored on an **orphan branch** in the target repo, named
+Session state lives on an **orphan branch** in the target repo, named
 `agent-design/<feature-slug>` (e.g. `agent-design/news-admin-cli`). Orphan
 branches share no history with `main` — `git log main` never shows design
 session commits.
 
 A **git worktree** links the orphan branch to a `.agent-design/` directory
-inside the target repo. This means:
+inside the target repo:
 - The main working tree stays on `main` at all times
 - Agents read/write files in `.agent-design/` which commits to the orphan branch
 - No branch switching required during a session
 
-`.agent-design/` is listed in the target repo's `.gitignore` so it never
-appears as untracked/staged content in the main working tree.
+`.agent-design/` is listed in the target repo's `.gitignore`.
 
 ```
-news_reader/                          ← main worktree (branch: main)
-  .gitignore                          ← includes: .agent-design
+news_reader/                           ← main worktree (branch: main)
+  .gitignore                           ← includes .agent-design
   src/
   ...
-  .agent-design/                      ← linked worktree (branch: agent-design/news-admin-cli)
+  .agent-design/                       ← linked worktree (branch: agent-design/news-admin-cli)
     ROUND_STATE.json
     BASELINE.md
-    drafts/
-      architect.md
-      developer.md
-      tester.md
     DESIGN.md
     DECISIONS.md
+    DISCUSSION.md
     feedback/
-      round-2-mark.md
+      human-round-1.md
 ```
 
-### Setup (done by `agent-design init`)
+### Setup (`agent-design init`)
 
 ```bash
 # 1. Create the orphan branch
@@ -257,174 +402,188 @@ git worktree add .agent-design agent-design/news-admin-cli
 echo ".agent-design" >> .gitignore
 ```
 
-### Checkpoints (done by the Lead agent at end of each round)
+If `.agent-design` worktree already exists (crash recovery), `agent-design init`
+detects this and resumes rather than failing with "worktree already exists".
 
-All commits and tags happen inside `.agent-design/` (i.e. on the orphan branch):
+### Checkpoints (Eng Manager, end of each phase)
 
 ```bash
 cd .agent-design
 git add -A
-git commit -m "checkpoint: round-1 independent drafts complete"
-git tag chk-round-1
+git commit -m "checkpoint: phase-2 design review complete"
+git tag chk-phase-2
 git push origin agent-design/news-admin-cli --tags
 ```
 
 ### Rollback
 
 ```bash
-# Via CLI:
-agent-design rollback chk-round-1
+agent-design rollback chk-phase-1
 
 # Under the hood:
 cd .agent-design
-git checkout chk-round-1   # detached HEAD at that checkpoint
-# (fix the bad prompt or agent definition)
-agent-design next           # Lead reads ROUND_STATE.json → resumes from round 1
+git checkout chk-phase-1    # detached HEAD at that checkpoint
+# fix the prompt or design approach
+agent-design next            # Eng Manager reads ROUND_STATE.json → resumes from phase 1
 ```
 
-### Session Close (done by `agent-design close`)
+### Resume (re-attach from fresh terminal)
 
 ```bash
-# Remove the worktree
-git worktree remove .agent-design
-
-# Optionally delete the orphan branch (history no longer needed)
-git branch -D agent-design/news-admin-cli
-git push origin --delete agent-design/news-admin-cli
+agent-design resume <repo-path>
+# Reads .agent-design/ROUND_STATE.json → restores session state → continues from last checkpoint
 ```
-
-Design artifacts are already in `docs/design/<feature-slug>/` via the merged
-PR, so no history is lost.
 
 ---
 
-### `ROUND_STATE.json` Schema
+## `ROUND_STATE.json` Schema
 
 ```json
 {
   "feature_slug": "news-admin-cli",
   "feature_request": "Build a news-admin CLI with re-extract and dead-letter commands",
   "target_repo": "/Users/mstriebeck/workspace/news_reader",
-  "round": 2,
-  "phase": "awaiting_human_feedback",
+  "phase": "open_discussion",
+  "discussion_turns": 3,
   "baseline_commit": "abc123def456",
-  "completed": ["baseline", "independent_drafts", "debate", "design_doc_v1"],
-  "pr_url": "https://github.com/MarksStuff/news_reader/pull/132",
-  "checkpoint_tag": "chk-round-2"
+  "completed": ["baseline", "initial_draft"],
+  "pr_url": null,
+  "checkpoint_tag": "chk-phase-1"
 }
 ```
+
+**`phase` values:** `"baseline"` → `"initial_draft"` → `"open_discussion"` →
+`"awaiting_human"` → `"complete"`
 
 ---
 
 ## Design Artifacts in the Target Repo
 
 Approved design docs live permanently in the target repo under
-`docs/design/<feature-slug>/`, one subdirectory per feature. This prevents
-co-mingling across features and makes designs discoverable alongside the code.
+`docs/design/<feature-slug>/`, one subdirectory per feature:
 
 ```
 docs/design/
   news-admin-cli/
     DESIGN.md
     DECISIONS.md
-  embedder-daemon/           ← future feature, fully isolated
+  embedder-daemon/
     DESIGN.md
     DECISIONS.md
 ```
 
-The Lead creates this directory and opens the PR when Round 2 completes.
-
 ---
 
-## Agent Role Definitions
+## Agent Prompt Sketches
 
-> 🔴 **Open:** Full role prompts need to be fleshed out and tested against a
-> real feature. Sketches below capture intent only.
+> These are starting-point sketches. Full prompts will be refined through
+> live testing.
 
-### Lead Agent Prompt (sketch)
+### Eng Manager Prompt (sketch)
 
 ```
-You are the Lead agent in a multi-agent design workflow. You orchestrate —
-you do not contribute design opinions.
+You are the Eng Manager in a multi-agent design workflow. You facilitate and
+orchestrate — you are not the primary design contributor.
 
-On startup:
-1. Read ROUND_STATE.json to determine the current round and phase.
-2. Proceed with the next uncompleted step.
+On startup: read ROUND_STATE.json to determine the current phase, then proceed.
 
-Rules:
-- Write every output to a file before sharing it with other agents.
+Facilitation rules:
+- If an agent hasn't contributed on a significant topic, explicitly ask them.
+- If an agent states an opinion without a concrete grounding ("we should never X"),
+  ask them to specify what concretely breaks in this design if X is used.
+- When two agents disagree, name the disagreement clearly and ask each side what
+  evidence or constraint would change their position.
+- Recognize when a disagreement is circling — ask what can be decided now vs. deferred.
+- When no new substantive objections arise, ask each agent explicitly if they have
+  unresolved concerns before declaring convergence.
+
+You may express your own opinion, but always facilitate first.
+
+Orchestration rules:
+- Write every output to a file before routing it to other agents.
 - Update ROUND_STATE.json at the start and end of every phase.
-- Commit and tag at the end of every round. Do not proceed without checkpointing.
-- In Round 1: spawn agents one at a time. Do not spawn the next agent until
-  the current one's draft file exists on disk. Never show an agent another
-  agent's draft until all three are complete.
-- Capture every disagreement in DECISIONS.md — not just the hard ones.
+- Commit and tag at the end of every phase. Do not proceed without checkpointing.
+- Update DECISIONS.md with every resolved disagreement — not just the hard ones.
 ```
 
-### Architect Agent Prompt (sketch)
+### Architect Prompt (sketch)
 
 ```
-You are the Architect agent. You focus on system boundaries, data flow,
-component responsibilities, and long-term maintainability.
+You are the Architect in a multi-agent design workflow. You own the design.
 
-Round 0: Read the codebase. If BASELINE.md already exists, check
-baseline-commit and use `git log <commit>..HEAD --name-only` to find changed
-files. Only re-analyze what changed. Write/update BASELINE.md with the current
-commit ID in the header.
+Phase 0: Read the codebase. If BASELINE.md exists, check baseline-commit and
+use `git log <commit>..HEAD --name-only` to find what changed. Only re-analyze
+changed sections. Update BASELINE.md with the current commit in the header.
 
-Round 1: Read BASELINE.md and the feature request. Write your design draft to
-drafts/architect.md. Do not read other agents' drafts.
+Phase 1: Read BASELINE.md and the feature request. Before writing, sharpen the
+requirements — what is in scope, what is out of scope, what assumptions are you
+making? Write the first draft of DESIGN.md.
 
-Round 2: Read all drafts. Engage directly with disagreements. Be specific about
-why you agree or disagree. Do not be diplomatic at the cost of correctness.
+Discussion: Read DISCUSSION.md fully before adding your entry. Respond to
+specific points raised by other agents — not just your own position. If you
+change your mind, say so explicitly and explain why.
 ```
 
-### Developer Agent Prompt (sketch)
+### Developer Prompt (sketch)
 
 ```
-You are the Developer agent. You focus on what the implementation actually
-looks like — what's easy, what's hard, edge cases, naming, API shape.
+You are the Developer in a multi-agent design workflow.
 
-Round 1: Read BASELINE.md and the feature request. Write your draft to
-drafts/developer.md. Do not read other agents' drafts.
+Read BASELINE.md and DESIGN.md before contributing. Read DISCUSSION.md fully
+before adding your entry.
 
-Round 2: If something looks clean in a design but will be painful to implement,
-say so and explain concretely why. Vague concerns don't help anyone.
+Focus on: what will implementation actually look like? What's easy, what's hard,
+what are the edge cases? If something looks clean on paper but will be painful
+to build, say so — with a specific, concrete reason. Vague concerns don't help.
+
+Do not restate the design back. Add new information or a direct response to
+something another agent said.
 ```
 
-### Tester Agent Prompt (sketch)
+### QA Engineer Prompt (sketch)
 
 ```
-You are the Tester agent. You approach design from the outside-in. You focus
-on testability, observable contracts, and failure modes.
+You are the QA Engineer in a multi-agent design workflow.
 
-Round 1: Read BASELINE.md and the feature request. Write your draft to
-drafts/tester.md. For every proposed interface, ask: how do I test this?
-What inputs are unspecified? What can a caller do wrong?
+Read BASELINE.md and DESIGN.md before contributing. Read DISCUSSION.md fully
+before adding your entry.
 
-Round 2: Call out design choices that make testing hard. Untestable design
-is a design flaw, not a testing problem.
+Focus on: does this design actually satisfy the requirements? What are the
+acceptance criteria? What happens at the boundary cases? What observable
+contracts are under-specified? How do we verify end-to-end correctness?
+
+Approach from the outside-in: you care about what a user or caller can observe,
+not about implementation internals.
+```
+
+### Code Quality Engineer Prompt (sketch)
+
+```
+You are the Code Quality Engineer in a multi-agent design workflow.
+
+Read BASELINE.md and DESIGN.md before contributing. Read DISCUSSION.md fully
+before adding your entry.
+
+Focus on: can this design be unit tested? Every complex object must have an
+abstract protocol/interface so it can be both a production implementation and
+a mock. Dependency injection is non-negotiable — call out any design where
+dependencies are instantiated internally rather than injected.
+
+Your question for every interface: "How would I write a unit test for this
+without touching the network, database, or file system?"
 ```
 
 ---
 
 ## Open Questions
 
-🔴 **Full agent role prompts**
-Sketches above need fleshing out and live testing.
-
-🔴 **`agent-design resume` command**
-If the terminal is closed mid-session, how does the user re-attach?
-Likely: `agent-design resume <repo-path>` reads `ROUND_STATE.json` from the
-existing worktree and restarts the agent team from the last checkpoint.
+🔴 **Full agent prompts**
+Sketches above need fleshing out and live testing against a real feature.
 
 🔴 **Claude Code setup**
-Requires Claude Code v2.1.32+, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`.
-Document exact invocation from the Python CLI.
-
-🔴 **Handling the case where `.agent-design` worktree already exists**
-If a session crashes mid-init, `agent-design init` needs to detect and recover
-rather than failing on "worktree already exists".
+Requires Claude Code v2.1.32+. Document exact invocation from the Python CLI,
+including whether `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is needed or whether
+individual `claude` instances are sufficient for this workflow pattern.
 
 ---
 
@@ -432,15 +591,22 @@ rather than failing on "worktree already exists".
 
 | Decision | Resolution |
 |---|---|
-| **State lives in files, not session memory** | ✅ Sessions are stateless workers; files are source of truth |
+| **State lives in files, not session memory** | ✅ Sessions are stateless workers; files are the source of truth |
 | **CLI language** | ✅ Python |
-| **Checkpoint mechanism** | ✅ Orphan branch in target repo + git worktree at `.agent-design/`; commit + tag per round |
-| **Why orphan branch + worktree** | ✅ No history pollution on `main`; no separate repo; main working tree stays on `main`; full git tooling; auto-cleaned on `agent-design close` |
-| **Rollback mechanism** | ✅ `agent-design rollback <tag>` → `git checkout <tag>` inside worktree → new session reads files |
-| **Three specialist agents** | ✅ Architect, Developer, Tester + Lead orchestrator |
-| **Isolation in Round 1** | ✅ Sequential spawning — Lead waits for each draft file before spawning next agent |
+| **Structure lives at boundaries, discussion is free-form** | ✅ No predetermined round counts; convergence is natural |
+| **Checkpoint mechanism** | ✅ Orphan branch + git worktree at `.agent-design/`; commit + tag per phase |
+| **Why orphan branch + worktree** | ✅ No history pollution on `main`; no repo sprawl; main tree stays on `main`; full git tooling; cleaned up on `agent-design close` |
+| **Rollback mechanism** | ✅ `agent-design rollback <tag>` → `git checkout <tag>` inside worktree |
+| **Resume mechanism** | ✅ `agent-design resume <repo-path>` reads `ROUND_STATE.json` from existing worktree |
+| **Crash recovery on init** | ✅ `agent-design init` detects existing worktree and resumes rather than failing |
+| **Five agents** | ✅ Eng Manager (facilitator/orchestrator), Architect (design owner), Developer, QA Engineer, Code Quality Engineer |
+| **Eng Manager is facilitator, not designer** | ✅ Architect owns the design; Eng Manager owns the process |
+| **Tester split into two roles** | ✅ QA Engineer (outside-in, spec/acceptance) and Code Quality Engineer (inside-out, DI/mocks/unit testability) |
+| **Shared discussion thread** | ✅ Single `DISCUSSION.md` that all agents append to; no per-agent draft files |
+| **Eng Manager calls on silent agents** | ✅ Explicitly asks any agent that hasn't weighed in on a significant topic |
+| **Eng Manager enforces fact-based discussion** | ✅ Pushes agents to ground assertions in concrete concerns about the specific design |
+| **Baseline updates** | ✅ Incremental — `BASELINE.md` stores last analyzed commit; Architect diffs git history |
 | **Human feedback trigger** | ✅ `agent-design next` CLI command |
-| **Baseline updates** | ✅ Incremental — `BASELINE.md` stores last analyzed commit; Architect diffs git history to find changed files only |
-| **Working files location** | ✅ `.agent-design/` as linked git worktree on orphan branch; listed in target repo's `.gitignore` |
-| **Human feedback via GitHub** | ✅ PR against target repo with `docs/design/<feature-slug>/DESIGN.md` + `DECISIONS.md` |
-| **Design artifact naming** | ✅ `docs/design/<feature-slug>/` subdirectory per feature; no co-mingling across features |
+| **Human feedback via GitHub** | ✅ PR against target repo; `agent-design next` fetches comments via `gh` |
+| **Design artifact location** | ✅ `docs/design/<feature-slug>/` in target repo; one subdirectory per feature |
+| **Session close** | ✅ `agent-design close` → worktree removal + orphan branch cleanup |
