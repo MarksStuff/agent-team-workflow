@@ -88,6 +88,18 @@ else
     echo "✅ Pre-push hook already installed"
 fi
 
+# ── Git identity (Roxy's account) ────────────────────────────────────────────
+ROXY_EMAIL="269813048+roxy-mstriebeck@users.noreply.github.com"
+CURRENT_EMAIL=$(git config user.email 2>/dev/null || echo "")
+if [ "$CURRENT_EMAIL" != "$ROXY_EMAIL" ]; then
+    echo "🔧 Setting git commit identity to Roxy..."
+    git config user.name "Roxy"
+    git config user.email "$ROXY_EMAIL"
+    echo "✅ Git identity: Roxy <$ROXY_EMAIL>"
+else
+    echo "✅ Git identity already set to Roxy"
+fi
+
 echo ""
 echo "🎉 Setup complete!"
 echo ""
