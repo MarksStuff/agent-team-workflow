@@ -2,7 +2,6 @@
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from uuid import UUID
 
 from agent_design.agents.types import AgentExecutionResult, AgentType
 

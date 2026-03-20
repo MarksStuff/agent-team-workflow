@@ -15,7 +15,7 @@ from agent_design.cli.commands.status import status
 
 @click.group()
 @click.version_option(version="0.1.0")
-def cli():
+def cli() -> None:
     """Multi-agent design workflow tool.
 
     Orchestrates 5 Claude Code agents to collaboratively design software features.

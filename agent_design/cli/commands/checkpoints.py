@@ -19,7 +19,7 @@ console = Console()
     default=".",
     help="Path to target repository (default: current directory)",
 )
-def checkpoints(repo_path: Path):
+def checkpoints(repo_path: Path) -> None:
     """List all checkpoints for the current session."""
     repo_path = repo_path.resolve()
 
@@ -50,4 +50,4 @@ def checkpoints(repo_path: Path):
 
     except Exception as e:
         console.print(f"[bold red]✗ Error:[/bold red] {e}")
-        raise click.Abort()
+        raise click.Abort() from e

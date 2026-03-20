@@ -23,7 +23,7 @@ console = Console()
     default=".",
     help="Path to target repository (default: current directory)",
 )
-def next_round(repo_path: Path):
+def next_round(repo_path: Path) -> None:
     """Run the next discussion round.
 
     Fetches PR comments (if PR exists), runs a discussion turn, and checkpoints.
@@ -31,7 +31,7 @@ def next_round(repo_path: Path):
     asyncio.run(async_next_round(repo_path))
 
 
-async def async_next_round(repo_path: Path):
+async def async_next_round(repo_path: Path) -> None:
     """Async implementation of next command."""
     repo_path = repo_path.resolve()
 
@@ -99,4 +99,4 @@ async def async_next_round(repo_path: Path):
 
     except Exception as e:
         console.print(f"\n[bold red]✗ Error:[/bold red] {e}")
-        raise click.Abort()
+        raise click.Abort() from e

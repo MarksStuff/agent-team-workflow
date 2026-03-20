@@ -20,7 +20,7 @@ console = Console()
     default=".",
     help="Path to target repository (default: current directory)",
 )
-def diff(tag: str, repo_path: Path):
+def diff(tag: str, repo_path: Path) -> None:
     """Show diff between checkpoint and current state.
 
     TAG: Checkpoint tag to diff against (e.g., 'chk-phase-1')
@@ -50,4 +50,4 @@ def diff(tag: str, repo_path: Path):
 
     except subprocess.CalledProcessError as e:
         console.print(f"[bold red]✗ Error:[/bold red] {e.stderr}")
-        raise click.Abort()
+        raise click.Abort() from e
