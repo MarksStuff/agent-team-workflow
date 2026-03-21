@@ -16,11 +16,11 @@ Five agents collaborate on every design:
 
 | Agent | Role |
 |---|---|
-| **Eng Manager** | Facilitates — ensures everyone speaks, keeps debate fact-based, drives convergence |
+| **Eng Manager** | Facilitates — ensures everyone speaks, keeps debate fact-based, drives convergence, surfaces deadlocks for human review |
 | **Architect** | Owns the design — writes baseline analysis and initial draft, updates as consensus forms |
-| **Developer** | Implementation focus — what's hard to build and why, API shape, edge cases |
-| **QA Engineer** | Outside-in quality — acceptance criteria, boundary cases, observable contracts |
-| **Code Quality Engineer** | Inside-out testability — DI, interface boundaries, unit test design |
+| **Developer** | Pragmatism and velocity — minimum working system, simplest thing that could work, bias toward shipping |
+| **QA Engineer** | Outside-in quality — acceptance criteria, observable contracts, gap detection, behavior verification |
+| **TDD Focused Engineer** | Inside-out testability — DI, interface boundaries, exhaustive unit tests, extract complex code for testability |
 
 Each design session runs in **stages**, separated by git checkpoints:
 
