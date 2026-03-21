@@ -1,6 +1,6 @@
 # Agent Team Workflow — Design Document
 
-> **Status:** v5 — Reflects current implementation.
+> **Status:** v6 — Reflects current implementation.
 
 ---
 
@@ -52,12 +52,14 @@ communicate directly.
 Does **not** own the design. Owns the **process**.
 
 - Ensures every agent contributes — calls out silent agents by name
-- Keeps discussion grounded in facts, not opinions: pushes back on "we should
-  never use X" with "what concretely breaks in *this* design if we do?"
+- Keeps discussion grounded in facts: pushes back on "we should never use X"
+  with "what concretely breaks in *this* situation if we do?"
 - Names disagreements explicitly and asks what evidence would change each position
 - Drives circling debates to a decision: "what's the minimum we need to decide
-  now vs. what can be deferred to implementation?"
-- Updates `DECISIONS.md` with every resolved disagreement
+  now vs. what can be deferred?"
+- When the team genuinely cannot agree after good-faith debate: surfaces the
+  deadlock explicitly (each position + strongest argument) and flags it for
+  human review — does not force false consensus
 - May express opinions but always facilitates first
 
 ### Architect (Design Owner)
@@ -69,29 +71,32 @@ Does **not** own the design. Owns the **process**.
   component responsibilities, long-term maintainability
 - Updates `DESIGN.md` incrementally as consensus forms — doesn't wait for the end
 
-### Developer (Implementation Focus)
+### Developer (Pragmatism & Velocity)
 
-- Focuses on what implementation will actually look like: API shape, error handling,
-  edge cases, what's straightforward vs. deceptively hard
-- Grounds every concern in a specific, concrete implementation problem — not general principles
-- Does not restate the design; adds new information or responds to specific points
+- Focused on getting to a working system as fast as possible
+- Defaults to the simplest thing that could work; resists gold-plating
+- Catches mismatches between clean-looking designs and messy implementation reality
+- Key question: "What is the minimum we need to implement to validate this works?"
 
 ### QA Engineer (Outside-In Quality)
 
-- Approaches the design from the outside-in: does it satisfy the requirements?
-  What are the acceptance criteria? What happens at the boundary cases?
-- Identifies under-specified observable contracts: what does a user or caller see
-  when X fails? What are the integration test scenarios?
-- Does not care about internal structure — that's Code Quality's role
+- Approaches the system as a user or external caller would: what can be observed?
+  What are the contracts? What happens at the boundaries and failure cases?
+- Pushes to define concrete acceptance criteria before anything else is decided
+- Identifies under-specified behaviors: what happens when X fails? When two
+  requests arrive simultaneously?
+- Does not weigh in on internal code structure — that's TDD Focused Engineer's role
 
-### Code Quality Engineer (Inside-Out Testability)
+### TDD Focused Engineer (Inside-Out Testability)
 
-- Focuses on unit testability: dependency injection, interface design, mock boundaries
-- For every interface: "how would I write a unit test for this without touching
-  the network, database, or filesystem?"
-- Every complex object needs an abstract protocol/interface so it can be implemented
-  as both a production version and a test mock
-- Calls out designs where dependencies are instantiated internally rather than injected
+- Focused on making code unit-testable in isolation, without real infrastructure
+- Dependency injection is non-negotiable: every component must accept its
+  dependencies as parameters, never instantiate them internally
+- For every significant component: is there an abstract interface so we can
+  substitute a test double?
+- Flags hidden dependencies (global state, singletons, static calls to services)
+- Pushes to extract complex logic into small, individually testable methods
+- Ensures exhaustive unit tests are written covering every branch and statement
 
 ---
 
@@ -144,7 +149,7 @@ out of scope, and what assumptions are being made.
 ### Stage 2 — Design Review (interactive agent team)
 
 **Triggered by:** `agent-design next`
-**Agents:** Eng Manager + Architect + Developer + QA Engineer + Code Quality Engineer
+**Agents:** Eng Manager + Architect + Developer + QA Engineer + TDD Focused Engineer
 **Mode:** Interactive `claude` session with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
 
 The CLI prints the Eng Manager's start message, then hands the terminal to Claude
@@ -301,14 +306,30 @@ docs/design/
 
 ## Agent Prompts
 
-Prompts live in `agent_design/prompts.py`. Four templates:
+Prompts live in `agent_design/prompts.py`. Two types:
+
+**Agent identity constants** (who each agent is — generic, applicable to any stage):
+
+| Constant | Agent |
+|---|---|
+| `AGENT_ENG_MANAGER` | Eng Manager |
+| `AGENT_ARCHITECT` | Architect |
+| `AGENT_DEVELOPER` | Developer |
+| `AGENT_QA_ENGINEER` | QA Engineer |
+| `AGENT_TDD_FOCUSSED_ENGINEER` | TDD Focused Engineer |
+
+**Stage task constants** (what to do right now — no agent identity):
 
 | Constant | Stage | Mode |
 |---|---|---|
-| `ARCHITECT_BASELINE` | 0 — codebase analysis | solo, non-interactive |
-| `ARCHITECT_INITIAL_DRAFT` | 1 — initial design draft | solo, non-interactive |
-| `ENG_MANAGER_REVIEW_START` | 2 — design review | agent team, interactive |
-| `ENG_MANAGER_FEEDBACK_START` | 3+ — incorporate feedback | agent team, interactive |
+| `STAGE_0_BASELINE` | 0 — codebase analysis | solo, non-interactive |
+| `STAGE_1_INITIAL_DRAFT` | 1 — initial design draft | solo, non-interactive |
+| `build_review_start()` | 2 — design review | agent team, interactive |
+| `build_feedback_start()` | 3+ — incorporate feedback | agent team, interactive |
+
+Team session start messages are assembled by `build_review_start()` and
+`build_feedback_start()`, which combine the Eng Manager identity, the stage
+task, and spawn prompts for all 4 teammates.
 
 ---
 
@@ -323,10 +344,12 @@ Prompts live in `agent_design/prompts.py`. Four templates:
 | **CLI language** | ✅ Python |
 | **Structure lives at boundaries, discussion is free-form** | ✅ No scripted round counts; convergence is natural |
 | **Checkpoint mechanism** | ✅ Orphan branch + git worktree; commit + tag per stage |
-| **Five agents** | ✅ Eng Manager, Architect, Developer, QA Engineer, Code Quality Engineer |
-| **Eng Manager is facilitator, not designer** | ✅ Architect owns the design; Eng Manager owns the process |
-| **Tester split into two roles** | ✅ QA Engineer (outside-in) and Code Quality Engineer (inside-out) |
+| **Five agents** | ✅ Eng Manager, Architect, Developer, QA Engineer, TDD Focused Engineer |
+| **Eng Manager is facilitator, not designer** | ✅ Does not own the design; owns the process |
+| **Quality split into two roles** | ✅ QA Engineer (outside-in, acceptance criteria) and TDD Focused Engineer (inside-out, unit testability, DI, exhaustive tests) |
+| **Agent prompts are generic** | ✅ `AGENT_*` constants describe who each agent is — applicable to any stage (investigation, design, implementation, review) |
 | **Eng Manager calls on silent agents** | ✅ Explicitly prompts any agent that hasn't weighed in |
-| **Eng Manager enforces fact-based discussion** | ✅ Pushes assertions to concrete concerns about the specific design |
+| **Eng Manager enforces fact-based discussion** | ✅ Pushes assertions to concrete concerns about the specific situation |
+| **Eng Manager surfaces deadlocks** | ✅ If team can't agree, records each position and flags for human review — no forced consensus |
 | **Design artifact location** | ✅ `docs/design/<feature-slug>/` in target repo |
 | **Session close** | ✅ `agent-design close` → worktree removal + orphan branch cleanup |
