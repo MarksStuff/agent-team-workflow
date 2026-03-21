@@ -8,7 +8,7 @@ from rich.panel import Panel
 
 from agent_design.git_ops import checkpoint, detect_existing_worktree
 from agent_design.launcher import run_team
-from agent_design.prompts import ENG_MANAGER_FEEDBACK_START
+from agent_design.prompts import build_feedback_start
 from agent_design.state import load_round_state, save_round_state
 
 console = Console()
@@ -51,7 +51,7 @@ def feedback(comment: str, repo_path: Path) -> None:
             border_style="magenta",
         )
     )
-    start_message = ENG_MANAGER_FEEDBACK_START.format(round_num=round_num)
+    start_message = build_feedback_start(round_num)
     rc = run_team(worktree_path, Path(state.target_repo), start_message)
     if rc != 0:
         console.print(f"[yellow]⚠ Claude exited with code {rc}[/yellow]")

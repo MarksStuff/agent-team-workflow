@@ -30,7 +30,8 @@ def _get_api_key() -> str:
 
 
 def run_solo(
-    prompt: str,
+    system_prompt: str,
+    task_prompt: str,
     worktree_path: Path,
     target_repo: Path,
 ) -> int:
@@ -40,7 +41,8 @@ def run_solo(
     Claude writes directly to files in worktree_path.
 
     Args:
-        prompt: Full task prompt for the Architect
+        system_prompt: Agent identity/persona (passed via --append-system-prompt)
+        task_prompt: Stage-specific task instructions (sent via stdin)
         worktree_path: Path to .agent-design/ worktree (claude's working dir)
         target_repo: Path to target repo (added as readable directory)
 
@@ -59,11 +61,13 @@ def run_solo(
         '{"mcpServers":{}}',
         "--add-dir",
         str(target_repo),
+        "--append-system-prompt",
+        system_prompt,
     ]
 
     result = subprocess.run(
         cmd,
-        input=prompt.encode(),
+        input=task_prompt.encode(),
         cwd=str(worktree_path),
         env=env,
     )

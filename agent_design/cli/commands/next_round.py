@@ -9,7 +9,7 @@ from rich.panel import Panel
 
 from agent_design.git_ops import checkpoint, detect_existing_worktree
 from agent_design.launcher import run_team
-from agent_design.prompts import ENG_MANAGER_FEEDBACK_START, ENG_MANAGER_REVIEW_START
+from agent_design.prompts import build_feedback_start, build_review_start
 from agent_design.state import RoundState, load_round_state, save_round_state
 
 console = Console()
@@ -150,9 +150,7 @@ def next_round(repo_path: Path) -> None:
     if state.phase == "open_discussion":
         # ── Stage 2: design review agent team ────────────────────────────────
         console.print(Panel("Stage 2 — Agent team: design review", border_style="magenta"))
-        start_message = ENG_MANAGER_REVIEW_START.format(
-            feature_request=state.feature_request,
-        )
+        start_message = build_review_start(state.feature_request)
         rc = run_team(worktree_path, Path(state.target_repo), start_message)
         if rc != 0:
             console.print(f"[yellow]⚠ Claude exited with code {rc}[/yellow]")
@@ -198,7 +196,7 @@ def next_round(repo_path: Path) -> None:
                 f"[yellow]⚠ No PR URL in state — add feedback manually to feedback/human-round-{round_num}.md[/yellow]"
             )
 
-        start_message = ENG_MANAGER_FEEDBACK_START.format(round_num=round_num)
+        start_message = build_feedback_start(round_num)
         rc = run_team(worktree_path, Path(state.target_repo), start_message)
         if rc != 0:
             console.print(f"[yellow]⚠ Claude exited with code {rc}[/yellow]")

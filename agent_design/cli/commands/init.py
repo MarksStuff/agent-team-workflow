@@ -8,7 +8,7 @@ from rich.panel import Panel
 
 from agent_design.git_ops import checkpoint, detect_existing_worktree, setup_worktree
 from agent_design.launcher import run_solo
-from agent_design.prompts import ARCHITECT_BASELINE, ARCHITECT_INITIAL_DRAFT
+from agent_design.prompts import AGENT_ARCHITECT, STAGE_0_BASELINE, STAGE_1_INITIAL_DRAFT
 from agent_design.state import RoundState, generate_slug, load_round_state, save_round_state
 
 console = Console()
@@ -64,11 +64,15 @@ def init(repo_path: Path, feature_request: str) -> None:
 
     # ── Stage 0: Architect writes BASELINE.md ────────────────────────────────
     console.print(Panel("Stage 0 — Architect: codebase analysis", border_style="blue"))
-    prompt = ARCHITECT_BASELINE.format(
+    rc = run_solo(
+        system_prompt=AGENT_ARCHITECT,
+        task_prompt=STAGE_0_BASELINE.format(
+            target_repo=repo_path,
+            feature_request=feature_request,
+        ),
+        worktree_path=worktree_path,
         target_repo=repo_path,
-        feature_request=feature_request,
     )
-    rc = run_solo(prompt, worktree_path, repo_path)
     if rc != 0:
         console.print(f"[red]✗ Stage 0 failed (exit {rc})[/red]")
         raise click.Abort() from None
@@ -81,8 +85,12 @@ def init(repo_path: Path, feature_request: str) -> None:
 
     # ── Stage 1: Architect writes DESIGN.md v1 ───────────────────────────────
     console.print(Panel("Stage 1 — Architect: initial design draft", border_style="blue"))
-    prompt = ARCHITECT_INITIAL_DRAFT.format(feature_request=feature_request)
-    rc = run_solo(prompt, worktree_path, repo_path)
+    rc = run_solo(
+        system_prompt=AGENT_ARCHITECT,
+        task_prompt=STAGE_1_INITIAL_DRAFT.format(feature_request=feature_request),
+        worktree_path=worktree_path,
+        target_repo=repo_path,
+    )
     if rc != 0:
         console.print(f"[red]✗ Stage 1 failed (exit {rc})[/red]")
         raise click.Abort() from None
