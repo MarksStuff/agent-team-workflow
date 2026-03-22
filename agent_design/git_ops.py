@@ -5,11 +5,16 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-def _git_identity(cwd: Path) -> tuple[str, str]:
-    """Return (user.name, user.email) from git config, with fallbacks.
+def _commit_flags(cwd: Path) -> list[str]:
+    """Return git -c flags needed to make commits work in any repo.
 
-    Checks repo-level config first, then global. Falls back to generic
-    defaults so commits never fail due to missing identity.
+    Always disables commit signing — these are internal tracking commits on
+    orphan branches and don't need to satisfy signing policies enforced on
+    main (e.g. Apple's ac-sign).
+
+    Only injects user.name / user.email when they're genuinely absent from
+    git config; if they're already set (to anything), we leave them alone to
+    avoid overriding the user's real identity.
     """
 
     def _get(key: str) -> str | None:
@@ -21,9 +26,12 @@ def _git_identity(cwd: Path) -> tuple[str, str]:
         )
         return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
 
-    name = _get("user.name") or "agent-design"
-    email = _get("user.email") or "agent-design@localhost"
-    return name, email
+    flags = ["-c", "commit.gpgsign=false"]
+    if not _get("user.name"):
+        flags += ["-c", "user.name=agent-design"]
+    if not _get("user.email"):
+        flags += ["-c", "user.email=agent-design@localhost"]
+    return flags
 
 
 @dataclass
@@ -74,19 +82,8 @@ def setup_worktree(repo_path: Path, slug: str) -> Path:
     )
 
     # Create initial empty commit
-    name, email = _git_identity(repo_path)
     subprocess.run(
-        [
-            "git",
-            "-c",
-            f"user.name={name}",
-            "-c",
-            f"user.email={email}",
-            "commit",
-            "--allow-empty",
-            "-m",
-            f"init: agent design session — {slug}",
-        ],
+        ["git", *_commit_flags(repo_path), "commit", "--allow-empty", "-m", f"init: agent design session — {slug}"],
         cwd=repo_path,
         check=True,
         capture_output=True,
@@ -166,18 +163,8 @@ def checkpoint(worktree_path: Path, message: str, tag: str) -> None:
     )
 
     # Commit
-    name, email = _git_identity(worktree_path)
     subprocess.run(
-        [
-            "git",
-            "-c",
-            f"user.name={name}",
-            "-c",
-            f"user.email={email}",
-            "commit",
-            "-m",
-            message,
-        ],
+        ["git", *_commit_flags(worktree_path), "commit", "-m", message],
         cwd=worktree_path,
         check=True,
         capture_output=True,
