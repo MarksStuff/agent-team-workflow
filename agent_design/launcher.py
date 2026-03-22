@@ -1,9 +1,7 @@
 """Launch claude sessions for each design stage.
 
 Two modes:
-- run_solo(): Architect-only session for baseline analysis and initial design draft.
-  With API key: non-interactive --print (fully automated).
-  Without API key: interactive session handed to terminal (e.g. Apple internal build).
+- run_solo(): non-interactive --print session (Architect writing baseline/design draft)
 - run_team(): interactive agent team session handed off to the terminal
 """
 
@@ -22,8 +20,8 @@ console = Console()
 def _get_api_key() -> str | None:
     """Get Anthropic API key from environment or ~/.anthropic_api_key.
 
-    Returns None if neither is present — callers should proceed without
-    setting the key and rely on claude's existing login session.
+    Returns None if neither is present — Claude will authenticate via its
+    own configured method (e.g. OAuth login session or apiKeyHelper script).
     """
     key = os.getenv("ANTHROPIC_API_KEY")
     if key:
@@ -40,12 +38,10 @@ def run_solo(
     worktree_path: Path,
     target_repo: Path,
 ) -> int:
-    """Run a single-agent Architect session.
+    """Run a non-interactive single-agent claude session.
 
-    With API key: fully automated via claude --print (no user interaction needed).
-    Without API key: hands the terminal to an interactive Claude session. Claude
-    receives the task as its opening message and works autonomously; close the
-    session (Ctrl+C or /exit) when it signals it's done writing files.
+    Used for automated stages: baseline analysis and initial design draft.
+    Claude writes directly to files in worktree_path.
 
     Args:
         system_prompt: Agent identity/persona (passed via --append-system-prompt)
@@ -60,19 +56,7 @@ def run_solo(
     api_key = _get_api_key()
     if api_key:
         env["ANTHROPIC_API_KEY"] = api_key
-        return _run_solo_print(system_prompt, task_prompt, worktree_path, target_repo, env)
-    else:
-        return _run_solo_interactive(system_prompt, task_prompt, worktree_path, target_repo, env)
 
-
-def _run_solo_print(
-    system_prompt: str,
-    task_prompt: str,
-    worktree_path: Path,
-    target_repo: Path,
-    env: dict[str, str],
-) -> int:
-    """Non-interactive --print mode. Requires API key."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as mcp_file:
         json.dump({"mcpServers": {}}, mcp_file)
         mcp_config_path = mcp_file.name
@@ -100,38 +84,6 @@ def _run_solo_print(
         os.unlink(mcp_config_path)
 
     return result.returncode
-
-
-def _run_solo_interactive(
-    system_prompt: str,
-    task_prompt: str,
-    worktree_path: Path,
-    target_repo: Path,
-    env: dict[str, str],
-) -> int:
-    """Interactive fallback for environments where Claude subprocess calls are unavailable.
-
-    Apple's internal Claude Code build routes API calls through a local daemon that
-    requires an authenticated TTY session — subprocess invocations always fail with
-    a 500 fetch_error regardless of flags or environment. The only reliable approach
-    is to have the user run Claude manually in a separate terminal.
-    """
-    full_prompt = f"{task_prompt}\n\n--- Architect persona (add mentally to your approach) ---\n{system_prompt}"
-    console.print(
-        Panel(
-            full_prompt,
-            title="[bold yellow]Run this task manually in a separate terminal[/bold yellow]",
-            border_style="yellow",
-        )
-    )
-    console.print()
-    console.print("[yellow]In a separate terminal:[/yellow]")
-    console.print(f"  [bold cyan]cd {worktree_path}[/bold cyan]")
-    console.print("  [bold cyan]claude[/bold cyan]")
-    console.print("[dim]Paste the prompt above, let Claude write the files, then /exit.[/dim]")
-    console.print()
-    input("Press Enter here when Claude has finished and you've exited the session... ")
-    return 0
 
 
 def run_team(

@@ -84,43 +84,25 @@ Write only the feature description. No preamble, no explanation.
 """
 
 
-def _find_api_key() -> str | None:
-    """Return the Anthropic API key from env or ~/.anthropic_api_key, or None."""
-    key = os.getenv("ANTHROPIC_API_KEY")
-    if key:
-        return key
-    key_file = Path.home() / ".anthropic_api_key"
-    if key_file.exists():
-        return key_file.read_text().strip() or None
-    return None
+def extract_feature_from_doc(doc_path: Path, section_header: str) -> str:
+    """Use Claude to extract a concise feature description from a doc section.
 
-
-def extract_feature_from_doc(doc_path: Path, section_header: str) -> tuple[str, bool]:
-    """Extract a concise feature description from a doc section.
-
-    If an Anthropic API key is available, makes a single non-interactive
-    claude --print call to produce a polished 3–6 sentence description.
-    Otherwise returns the raw section content directly (no LLM call).
+    Makes a single non-interactive claude --print call to produce a polished
+    3–6 sentence description. If no ANTHROPIC_API_KEY is set, Claude will
+    authenticate via its own configured method (OAuth, apiKeyHelper, etc.).
 
     Args:
         doc_path: Path to the markdown specification document.
         section_header: Heading text identifying the section to extract from.
 
     Returns:
-        Tuple of (feature_description, llm_used). llm_used is True when Claude
-        was called, False when raw section content was returned as-is.
+        A concise feature description string.
 
     Raises:
         ValueError: If the section is not found.
-        RuntimeError: If Claude is called and exits non-zero.
+        RuntimeError: If Claude exits non-zero.
     """
     section_content = extract_section(doc_path, section_header)
-
-    api_key = _find_api_key()
-    if not api_key:
-        # No API key — claude --print won't work without one (OAuth sessions
-        # are interactive-only). Return the raw section content as-is.
-        return section_content, False
 
     prompt = _EXTRACTION_PROMPT.format(
         doc_name=doc_path.name,
@@ -129,7 +111,13 @@ def extract_feature_from_doc(doc_path: Path, section_header: str) -> tuple[str, 
     )
 
     env = os.environ.copy()
-    env["ANTHROPIC_API_KEY"] = api_key
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        key_file = Path.home() / ".anthropic_api_key"
+        if key_file.exists():
+            api_key = key_file.read_text().strip()
+    if api_key:
+        env["ANTHROPIC_API_KEY"] = api_key
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as mcp_file:
         json.dump({"mcpServers": {}}, mcp_file)
@@ -159,4 +147,4 @@ def extract_feature_from_doc(doc_path: Path, section_header: str) -> tuple[str, 
         detail = "\n".join(filter(None, [f"stdout: {stdout}" if stdout else "", f"stderr: {stderr}" if stderr else ""]))
         raise RuntimeError(f"Claude exited with code {result.returncode}.\n{detail}")
 
-    return result.stdout.decode().strip(), True
+    return result.stdout.decode().strip()
