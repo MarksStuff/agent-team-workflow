@@ -169,9 +169,9 @@ def checkpoint(worktree_path: Path, message: str, tag: str) -> None:
         capture_output=True,
     )
 
-    # Create tag
+    # Create tag (force-overwrite in case a previous failed run left one behind)
     subprocess.run(
-        ["git", *_nosign_flags(worktree_path), "tag", tag],
+        ["git", *_nosign_flags(worktree_path), "tag", "-f", tag],
         cwd=worktree_path,
         check=True,
         capture_output=True,
