@@ -133,6 +133,7 @@ def extract_feature_from_doc(doc_path: Path, section_header: str) -> str:
                 "--strict-mcp-config",
                 "--mcp-config",
                 mcp_config_path,
+                "--",
                 prompt,
             ],
             capture_output=True,

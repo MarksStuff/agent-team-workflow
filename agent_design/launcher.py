@@ -74,6 +74,7 @@ def run_solo(
                 str(target_repo),
                 "--append-system-prompt",
                 system_prompt,
+                "--",
                 task_prompt,
             ],
             cwd=str(worktree_path),
