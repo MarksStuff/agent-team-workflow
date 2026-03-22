@@ -109,29 +109,29 @@ def _run_solo_interactive(
     target_repo: Path,
     env: dict[str, str],
 ) -> int:
-    """Interactive fallback for environments where --print is unavailable (e.g. Apple internal build).
+    """Interactive fallback for environments where Claude subprocess calls are unavailable.
 
-    Launches bare `claude` with no positional args or extra flags (passing args
-    triggers the same broken non-interactive code path as --print on Apple's build).
-    The task is shown in a panel for the user to paste as the first message.
+    Apple's internal Claude Code build routes API calls through a local daemon that
+    requires an authenticated TTY session — subprocess invocations always fail with
+    a 500 fetch_error regardless of flags or environment. The only reliable approach
+    is to have the user run Claude manually in a separate terminal.
     """
-    full_prompt = f"{task_prompt}\n\n[System context — add to your system prompt mentally]\n{system_prompt}"
+    full_prompt = f"{task_prompt}\n\n--- Architect persona (add mentally to your approach) ---\n{system_prompt}"
     console.print(
         Panel(
             full_prompt,
-            title="[bold yellow]Paste this into Claude to start (no API key — interactive mode)[/bold yellow]",
-            subtitle="[dim]Copy the text above · paste when Claude opens · /exit when done writing files[/dim]",
+            title="[bold yellow]Run this task manually in a separate terminal[/bold yellow]",
             border_style="yellow",
         )
     )
     console.print()
-
-    result = subprocess.run(
-        ["claude"],
-        cwd=str(worktree_path),
-        env=env,
-    )
-    return result.returncode
+    console.print("[yellow]In a separate terminal:[/yellow]")
+    console.print(f"  [bold cyan]cd {worktree_path}[/bold cyan]")
+    console.print("  [bold cyan]claude[/bold cyan]")
+    console.print("[dim]Paste the prompt above, let Claude write the files, then /exit.[/dim]")
+    console.print()
+    input("Press Enter here when Claude has finished and you've exited the session... ")
+    return 0
 
 
 def run_team(
