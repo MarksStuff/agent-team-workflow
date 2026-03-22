@@ -5,6 +5,27 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+def _git_identity(cwd: Path) -> tuple[str, str]:
+    """Return (user.name, user.email) from git config, with fallbacks.
+
+    Checks repo-level config first, then global. Falls back to generic
+    defaults so commits never fail due to missing identity.
+    """
+
+    def _get(key: str) -> str | None:
+        r = subprocess.run(
+            ["git", "config", "--get", key],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+        return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
+
+    name = _get("user.name") or "agent-design"
+    email = _get("user.email") or "agent-design@localhost"
+    return name, email
+
+
 @dataclass
 class Checkpoint:
     """Checkpoint metadata.
@@ -53,8 +74,19 @@ def setup_worktree(repo_path: Path, slug: str) -> Path:
     )
 
     # Create initial empty commit
+    name, email = _git_identity(repo_path)
     subprocess.run(
-        ["git", "commit", "--allow-empty", "-m", f"init: agent design session — {slug}"],
+        [
+            "git",
+            "-c",
+            f"user.name={name}",
+            "-c",
+            f"user.email={email}",
+            "commit",
+            "--allow-empty",
+            "-m",
+            f"init: agent design session — {slug}",
+        ],
         cwd=repo_path,
         check=True,
         capture_output=True,
@@ -134,8 +166,18 @@ def checkpoint(worktree_path: Path, message: str, tag: str) -> None:
     )
 
     # Commit
+    name, email = _git_identity(worktree_path)
     subprocess.run(
-        ["git", "commit", "-m", message],
+        [
+            "git",
+            "-c",
+            f"user.name={name}",
+            "-c",
+            f"user.email={email}",
+            "commit",
+            "-m",
+            message,
+        ],
         cwd=worktree_path,
         check=True,
         capture_output=True,
