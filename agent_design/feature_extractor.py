@@ -97,7 +97,7 @@ def extract_feature_from_doc(doc_path: Path, section_header: str) -> str:
 
     Raises:
         ValueError: If the section is not found.
-        RuntimeError: If the API key is missing or Claude exits non-zero.
+        RuntimeError: If Claude exits non-zero.
     """
     section_content = extract_section(doc_path, section_header)
 
@@ -113,9 +113,10 @@ def extract_feature_from_doc(doc_path: Path, section_header: str) -> str:
         key_file = Path.home() / ".anthropic_api_key"
         if key_file.exists():
             api_key = key_file.read_text().strip()
-    if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY not set and ~/.anthropic_api_key not found.")
-    env["ANTHROPIC_API_KEY"] = api_key
+    if api_key:
+        env["ANTHROPIC_API_KEY"] = api_key
+    # If no key found, proceed without setting it — claude may be authenticated
+    # via `claude login` (OAuth session in ~/.claude.json).
 
     result = subprocess.run(
         [

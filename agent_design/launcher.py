@@ -15,18 +15,19 @@ from rich.panel import Panel
 console = Console()
 
 
-def _get_api_key() -> str:
-    """Get Anthropic API key from environment or ~/.anthropic_api_key."""
+def _get_api_key() -> str | None:
+    """Get Anthropic API key from environment or ~/.anthropic_api_key.
+
+    Returns None if neither is present — callers should proceed without
+    setting the key and rely on claude's existing login session.
+    """
     key = os.getenv("ANTHROPIC_API_KEY")
     if key:
         return key
     key_file = Path.home() / ".anthropic_api_key"
     if key_file.exists():
         return key_file.read_text().strip()
-    raise RuntimeError(
-        "ANTHROPIC_API_KEY not set and ~/.anthropic_api_key not found.\n"
-        "Create it: echo 'sk-ant-...' > ~/.anthropic_api_key && chmod 600 ~/.anthropic_api_key"
-    )
+    return None
 
 
 def run_solo(
@@ -50,7 +51,9 @@ def run_solo(
         Exit code from claude process
     """
     env = os.environ.copy()
-    env["ANTHROPIC_API_KEY"] = _get_api_key()
+    api_key = _get_api_key()
+    if api_key:
+        env["ANTHROPIC_API_KEY"] = api_key
 
     cmd = [
         "claude",
@@ -97,7 +100,9 @@ def run_team(
         Exit code from claude process
     """
     env = os.environ.copy()
-    env["ANTHROPIC_API_KEY"] = _get_api_key()
+    api_key = _get_api_key()
+    if api_key:
+        env["ANTHROPIC_API_KEY"] = api_key
     env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] = "1"
 
     cmd = [
