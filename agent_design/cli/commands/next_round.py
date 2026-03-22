@@ -41,7 +41,7 @@ def _gh(*args: str) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     if env_token:
         env["GH_TOKEN"] = env_token
-    return subprocess.run(["gh", *args], capture_output=True, text=True, env=env)
+    return subprocess.run(["gh", *args], capture_output=True, text=True, env=env, shell=True)
 
 
 def _fetch_pr_feedback(pr_url: str, round_num: int, worktree_path: Path) -> Path:
