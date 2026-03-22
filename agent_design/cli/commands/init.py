@@ -156,7 +156,7 @@ def init(
             "[green]Stages 0 and 1 complete.[/green]\n\n"
             "Review [bold].agent-design/BASELINE.md[/bold] and "
             "[bold].agent-design/DESIGN.md[/bold], then run:\n\n"
-            f"  [bold cyan]agent-design next {repo_path}[/bold cyan]\n\n"
+            f"  [bold cyan]agent-design next --repo-path {repo_path}[/bold cyan]\n\n"
             "to start the agent team design review.",
             title="[green]✓ Init complete[/green]",
             border_style="green",
