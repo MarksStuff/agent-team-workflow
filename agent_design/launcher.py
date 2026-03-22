@@ -5,8 +5,10 @@ Two modes:
 - run_team(): interactive agent team session handed off to the terminal
 """
 
+import json
 import os
 import subprocess
+import tempfile
 from pathlib import Path
 
 from rich.console import Console
@@ -55,25 +57,31 @@ def run_solo(
     if api_key:
         env["ANTHROPIC_API_KEY"] = api_key
 
-    cmd = [
-        "claude",
-        "--print",
-        "--dangerously-skip-permissions",
-        "--strict-mcp-config",
-        "--mcp-config",
-        '{"mcpServers":{}}',
-        "--add-dir",
-        str(target_repo),
-        "--append-system-prompt",
-        system_prompt,
-        task_prompt,
-    ]
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as mcp_file:
+        json.dump({"mcpServers": {}}, mcp_file)
+        mcp_config_path = mcp_file.name
 
-    result = subprocess.run(
-        cmd,
-        cwd=str(worktree_path),
-        env=env,
-    )
+    try:
+        result = subprocess.run(
+            [
+                "claude",
+                "--print",
+                "--dangerously-skip-permissions",
+                "--strict-mcp-config",
+                "--mcp-config",
+                mcp_config_path,
+                "--add-dir",
+                str(target_repo),
+                "--append-system-prompt",
+                system_prompt,
+                task_prompt,
+            ],
+            cwd=str(worktree_path),
+            env=env,
+        )
+    finally:
+        os.unlink(mcp_config_path)
+
     return result.returncode
 
 

@@ -7,9 +7,11 @@ Supports two operations:
                                feature description suitable for agent-design init
 """
 
+import json
 import os
 import re
 import subprocess
+import tempfile
 from pathlib import Path
 
 
@@ -118,19 +120,26 @@ def extract_feature_from_doc(doc_path: Path, section_header: str) -> str:
     # If no key found, proceed without setting it — claude may be authenticated
     # via `claude login` (OAuth session in ~/.claude.json).
 
-    result = subprocess.run(
-        [
-            "claude",
-            "--print",
-            "--dangerously-skip-permissions",
-            "--strict-mcp-config",
-            "--mcp-config",
-            '{"mcpServers":{}}',
-            prompt,
-        ],
-        capture_output=True,
-        env=env,
-    )
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as mcp_file:
+        json.dump({"mcpServers": {}}, mcp_file)
+        mcp_config_path = mcp_file.name
+
+    try:
+        result = subprocess.run(
+            [
+                "claude",
+                "--print",
+                "--dangerously-skip-permissions",
+                "--strict-mcp-config",
+                "--mcp-config",
+                mcp_config_path,
+                prompt,
+            ],
+            capture_output=True,
+            env=env,
+        )
+    finally:
+        os.unlink(mcp_config_path)
 
     if result.returncode != 0:
         stdout = result.stdout.decode().strip()
