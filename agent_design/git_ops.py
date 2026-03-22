@@ -176,24 +176,7 @@ def checkpoint(worktree_path: Path, message: str, tag: str) -> None:
         check=True,
         capture_output=True,
     )
-
-    # Push branch and tags
-    # Get current branch name
-    result = subprocess.run(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        cwd=worktree_path,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    branch_name = result.stdout.strip()
-
-    subprocess.run(
-        ["git", "push", "origin", branch_name, "--tags"],
-        cwd=worktree_path,
-        check=True,
-        capture_output=True,
-    )
+    # Note: orphan branch is local crash-recovery state; no remote push needed.
 
 
 def rollback_to(worktree_path: Path, tag: str) -> None:
