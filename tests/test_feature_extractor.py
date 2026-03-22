@@ -89,6 +89,16 @@ def test_extract_section_top_level_heading() -> None:
     assert "Phase 1" in result
 
 
+def test_extract_subsection_stops_at_higher_level_heading() -> None:
+    """Extracting a ### sub-section stops at the next ## heading (higher level), not just same-level ###."""
+    doc = _write_doc(SAMPLE_DOC)
+    result = extract_section(doc, "Sub-section")
+    assert "Sub-section content." in result
+    # ## Phase 3 is a higher-level (##) heading that follows the ### Sub-section —
+    # the extractor must stop there, not bleed through to Phase 3 content.
+    assert "Phase 3" not in result
+
+
 def test_extract_section_strips_output() -> None:
     doc = _write_doc(SAMPLE_DOC)
     result = extract_section(doc, "Phase 1 — Foundation")
