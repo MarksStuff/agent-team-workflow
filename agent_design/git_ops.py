@@ -64,6 +64,25 @@ def setup_worktree(repo_path: Path, slug: str) -> Path:
     branch_name = f"agent-design/{slug}"
     worktree_path = repo_path / ".agent-design"
 
+    # Ensure the orphan branch does not exist (delete if it does)
+    try:
+        subprocess.run(
+            ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch_name}"],
+            cwd=repo_path,
+            check=True,
+            capture_output=True,
+        )
+        # If show-ref returns 0, branch exists. Delete it.
+        subprocess.run(
+            ["git", "branch", "-D", branch_name],
+            cwd=repo_path,
+            check=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError:
+        # Branch does not exist, or delete failed (this is handled by check=True)
+        pass
+
     # Create orphan branch
     subprocess.run(
         ["git", "checkout", "--orphan", branch_name],
