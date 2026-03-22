@@ -123,9 +123,6 @@ def extract_feature_from_doc(doc_path: Path, section_header: str) -> str:
             "claude",
             "--print",
             "--dangerously-skip-permissions",
-            "--strict-mcp-config",
-            "--mcp-config",
-            '{"mcpServers":{}}',
         ],
         input=prompt.encode(),
         capture_output=True,
@@ -133,6 +130,9 @@ def extract_feature_from_doc(doc_path: Path, section_header: str) -> str:
     )
 
     if result.returncode != 0:
-        raise RuntimeError(f"Claude exited with code {result.returncode}.\nstderr: {result.stderr.decode().strip()}")
+        stdout = result.stdout.decode().strip()
+        stderr = result.stderr.decode().strip()
+        detail = "\n".join(filter(None, [f"stdout: {stdout}" if stdout else "", f"stderr: {stderr}" if stderr else ""]))
+        raise RuntimeError(f"Claude exited with code {result.returncode}.\n{detail}")
 
     return result.stdout.decode().strip()
