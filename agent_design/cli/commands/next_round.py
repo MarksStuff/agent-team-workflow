@@ -8,7 +8,7 @@ import click
 from rich.console import Console
 from rich.panel import Panel
 
-from agent_design.git_ops import _nosign_flags, checkpoint, detect_existing_worktree
+from agent_design.git_ops import _nosign_flags, _run_git_in_target, checkpoint, detect_existing_worktree
 from agent_design.launcher import run_team
 from agent_design.prompts import build_feedback_start, build_review_start
 from agent_design.state import RoundState, load_round_state, save_round_state
@@ -16,22 +16,6 @@ from agent_design.state import RoundState, load_round_state, save_round_state
 console = Console()
 
 ROXY_GITHUB_TOKEN = Path.home() / ".roxy_github_token"
-
-
-# Helper to run git commands with error reporting
-def _run_git_in_target(cmd_args: list[str], cwd: Path, env: dict[str, str], error_msg: str) -> None:
-    result = subprocess.run(
-        ["git"] + cmd_args,
-        cwd=cwd,
-        env=env,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        console.print(f"[red]✗ {error_msg}: {result.returncode}[/red]")
-        console.print(f"[dim]  stdout: {result.stdout.strip()}[/dim]")
-        console.print(f"[dim]  stderr: {result.stderr.strip()}[/dim]")
-        raise subprocess.CalledProcessError(result.returncode, cmd_args, result.stdout, result.stderr)
 
 
 def _gh(*args: str) -> subprocess.CompletedProcess[str]:

@@ -30,7 +30,7 @@ def _nosign_flags(cwd: Path) -> list[str]:
         )
         return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
 
-    flags = ["-c", "commit.gpgsign=false", "-c", "tag.gpgSign=false"]
+    flags = ["-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false"]
     if not _get("user.name"):
         flags += ["-c", "user.name=agent-design"]
     if not _get("user.email"):
@@ -85,6 +85,25 @@ def setup_worktree(repo_path: Path, slug: str) -> Path:
     branch_name = f"agent-design/{slug}"
     worktree_path = repo_path / ".agent-design"
     repo_env = os.environ.copy()
+
+    # Ensure any previous worktree registration is cleared
+    console.print(f"[dim]Pruning stale Git worktree entries in {repo_path.name}...[/dim]")
+    _run_git_in_target(
+        ["worktree", "prune"],
+        cwd=repo_path,
+        env=repo_env,
+        error_msg="Failed to prune stale worktree entries",
+    )
+
+    # If the worktree directory physically exists, remove it forcibly
+    if worktree_path.exists():
+        console.print(f"[dim]Removing existing worktree directory {worktree_path} in {repo_path.name}...[/dim]")
+        _run_git_in_target(
+            ["worktree", "remove", "--force", str(worktree_path)],
+            cwd=repo_path,
+            env=repo_env,
+            error_msg="Failed to remove existing worktree directory",
+        )
 
     # Ensure the orphan branch does not exist (delete if it does)
     try:
