@@ -1,7 +1,9 @@
 """Launch claude sessions for each design stage.
 
 Two modes:
-- run_solo(): non-interactive --print session (Architect writing baseline/design draft)
+- run_solo(): Architect-only session for baseline analysis and initial design draft.
+  With API key: non-interactive --print (fully automated).
+  Without API key: interactive session handed to terminal (e.g. Apple internal build).
 - run_team(): interactive agent team session handed off to the terminal
 """
 
@@ -38,14 +40,16 @@ def run_solo(
     worktree_path: Path,
     target_repo: Path,
 ) -> int:
-    """Run a non-interactive single-agent claude session.
+    """Run a single-agent Architect session.
 
-    Used for automated stages: baseline analysis and initial design draft.
-    Claude writes directly to files in worktree_path.
+    With API key: fully automated via claude --print (no user interaction needed).
+    Without API key: hands the terminal to an interactive Claude session. Claude
+    receives the task as its opening message and works autonomously; close the
+    session (Ctrl+C or /exit) when it signals it's done writing files.
 
     Args:
         system_prompt: Agent identity/persona (passed via --append-system-prompt)
-        task_prompt: Stage-specific task instructions (sent via stdin)
+        task_prompt: Stage-specific task instructions
         worktree_path: Path to .agent-design/ worktree (claude's working dir)
         target_repo: Path to target repo (added as readable directory)
 
@@ -56,7 +60,19 @@ def run_solo(
     api_key = _get_api_key()
     if api_key:
         env["ANTHROPIC_API_KEY"] = api_key
+        return _run_solo_print(system_prompt, task_prompt, worktree_path, target_repo, env)
+    else:
+        return _run_solo_interactive(system_prompt, task_prompt, worktree_path, target_repo, env)
 
+
+def _run_solo_print(
+    system_prompt: str,
+    task_prompt: str,
+    worktree_path: Path,
+    target_repo: Path,
+    env: dict[str, str],
+) -> int:
+    """Non-interactive --print mode. Requires API key."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as mcp_file:
         json.dump({"mcpServers": {}}, mcp_file)
         mcp_config_path = mcp_file.name
@@ -83,6 +99,40 @@ def run_solo(
     finally:
         os.unlink(mcp_config_path)
 
+    return result.returncode
+
+
+def _run_solo_interactive(
+    system_prompt: str,
+    task_prompt: str,
+    worktree_path: Path,
+    target_repo: Path,
+    env: dict[str, str],
+) -> int:
+    """Interactive fallback for environments where --print is unavailable (e.g. Apple internal build)."""
+    console.print(
+        Panel(
+            task_prompt,
+            title="[bold yellow]Interactive mode — no API key detected[/bold yellow]",
+            subtitle="[dim]Claude will start with this task. Close the session (/exit) when done.[/dim]",
+            border_style="yellow",
+        )
+    )
+    console.print()
+
+    result = subprocess.run(
+        [
+            "claude",
+            "--dangerously-skip-permissions",
+            "--add-dir",
+            str(target_repo),
+            "--append-system-prompt",
+            system_prompt,
+            task_prompt,
+        ],
+        cwd=str(worktree_path),
+        env=env,
+    )
     return result.returncode
 
 
