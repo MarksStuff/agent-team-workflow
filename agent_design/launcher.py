@@ -109,27 +109,25 @@ def _run_solo_interactive(
     target_repo: Path,
     env: dict[str, str],
 ) -> int:
-    """Interactive fallback for environments where --print is unavailable (e.g. Apple internal build)."""
+    """Interactive fallback for environments where --print is unavailable (e.g. Apple internal build).
+
+    Launches bare `claude` with no positional args or extra flags (passing args
+    triggers the same broken non-interactive code path as --print on Apple's build).
+    The task is shown in a panel for the user to paste as the first message.
+    """
+    full_prompt = f"{task_prompt}\n\n[System context — add to your system prompt mentally]\n{system_prompt}"
     console.print(
         Panel(
-            task_prompt,
-            title="[bold yellow]Interactive mode — no API key detected[/bold yellow]",
-            subtitle="[dim]Claude will start with this task. Close the session (/exit) when done.[/dim]",
+            full_prompt,
+            title="[bold yellow]Paste this into Claude to start (no API key — interactive mode)[/bold yellow]",
+            subtitle="[dim]Copy the text above · paste when Claude opens · /exit when done writing files[/dim]",
             border_style="yellow",
         )
     )
     console.print()
 
     result = subprocess.run(
-        [
-            "claude",
-            "--dangerously-skip-permissions",
-            "--add-dir",
-            str(target_repo),
-            "--append-system-prompt",
-            system_prompt,
-            task_prompt,
-        ],
+        ["claude"],
         cwd=str(worktree_path),
         env=env,
     )
