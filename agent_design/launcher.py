@@ -59,18 +59,15 @@ def run_solo(
         "claude",
         "--print",
         "--dangerously-skip-permissions",
-        "--strict-mcp-config",
-        "--mcp-config",
-        '{"mcpServers":{}}',
         "--add-dir",
         str(target_repo),
         "--append-system-prompt",
         system_prompt,
+        task_prompt,
     ]
 
     result = subprocess.run(
         cmd,
-        input=task_prompt.encode(),
         cwd=str(worktree_path),
         env=env,
     )

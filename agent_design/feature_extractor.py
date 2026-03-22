@@ -123,8 +123,8 @@ def extract_feature_from_doc(doc_path: Path, section_header: str) -> str:
             "claude",
             "--print",
             "--dangerously-skip-permissions",
+            prompt,
         ],
-        input=prompt.encode(),
         capture_output=True,
         env=env,
     )
