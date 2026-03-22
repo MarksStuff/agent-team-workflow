@@ -5,16 +5,15 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-def _commit_flags(cwd: Path) -> list[str]:
-    """Return git -c flags needed to make commits work in any repo.
+def _nosign_flags(cwd: Path) -> list[str]:
+    """Return git -c flags that disable signing and ensure an identity exists.
 
-    Always disables commit signing — these are internal tracking commits on
-    orphan branches and don't need to satisfy signing policies enforced on
-    main (e.g. Apple's ac-sign).
+    Disables both commit and tag signing — these are internal tracking commits
+    and tags on orphan branches; they don't need to satisfy signing policies
+    enforced on main (e.g. Apple's ac-sign / tag.gpgSign).
 
-    Only injects user.name / user.email when they're genuinely absent from
-    git config; if they're already set (to anything), we leave them alone to
-    avoid overriding the user's real identity.
+    Only injects user.name / user.email when genuinely absent; leaves any
+    already-configured identity untouched.
     """
 
     def _get(key: str) -> str | None:
@@ -26,7 +25,7 @@ def _commit_flags(cwd: Path) -> list[str]:
         )
         return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
 
-    flags = ["-c", "commit.gpgsign=false"]
+    flags = ["-c", "commit.gpgsign=false", "-c", "tag.gpgSign=false"]
     if not _get("user.name"):
         flags += ["-c", "user.name=agent-design"]
     if not _get("user.email"):
@@ -83,7 +82,7 @@ def setup_worktree(repo_path: Path, slug: str) -> Path:
 
     # Create initial empty commit
     subprocess.run(
-        ["git", *_commit_flags(repo_path), "commit", "--allow-empty", "-m", f"init: agent design session — {slug}"],
+        ["git", *_nosign_flags(repo_path), "commit", "--allow-empty", "-m", f"init: agent design session — {slug}"],
         cwd=repo_path,
         check=True,
         capture_output=True,
@@ -164,7 +163,7 @@ def checkpoint(worktree_path: Path, message: str, tag: str) -> None:
 
     # Commit
     subprocess.run(
-        ["git", *_commit_flags(worktree_path), "commit", "-m", message],
+        ["git", *_nosign_flags(worktree_path), "commit", "-m", message],
         cwd=worktree_path,
         check=True,
         capture_output=True,
@@ -172,7 +171,7 @@ def checkpoint(worktree_path: Path, message: str, tag: str) -> None:
 
     # Create tag
     subprocess.run(
-        ["git", "tag", tag],
+        ["git", *_nosign_flags(worktree_path), "tag", tag],
         cwd=worktree_path,
         check=True,
         capture_output=True,
