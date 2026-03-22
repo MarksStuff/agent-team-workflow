@@ -64,12 +64,17 @@ def init(
         assert doc is not None and section is not None  # mypy
         console.print(f"[dim]Extracting feature from {doc} § {section}...[/dim]")
         try:
-            feature_request = extract_feature_from_doc(doc, section)
+            feature_request, llm_used = extract_feature_from_doc(doc, section)
         except ValueError as e:
             raise click.ClickException(str(e)) from e
         except RuntimeError as e:
             raise click.ClickException(str(e)) from e
-        console.print(Panel(feature_request, title="[cyan]Extracted feature[/cyan]", border_style="cyan"))
+        title = (
+            "[cyan]Extracted feature[/cyan]"
+            if llm_used
+            else "[cyan]Extracted feature[/cyan] [dim](raw — no API key)[/dim]"
+        )
+        console.print(Panel(feature_request, title=title, border_style="cyan"))
 
     assert feature_request is not None  # mypy — guaranteed by validation above
     repo_path = repo_path.resolve()
