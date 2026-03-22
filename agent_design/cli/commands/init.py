@@ -6,6 +6,7 @@ import click
 from rich.console import Console
 from rich.panel import Panel
 
+from agent_design.feature_extractor import extract_feature_from_doc
 from agent_design.git_ops import checkpoint, detect_existing_worktree, setup_worktree
 from agent_design.launcher import run_solo
 from agent_design.prompts import AGENT_ARCHITECT, STAGE_0_BASELINE, STAGE_1_INITIAL_DRAFT
@@ -16,13 +17,61 @@ console = Console()
 
 @click.command()
 @click.argument("repo_path", type=click.Path(exists=True, file_okay=False, path_type=Path))
-@click.argument("feature_request")
-def init(repo_path: Path, feature_request: str) -> None:
+@click.argument("feature_request", required=False, default=None)
+@click.option(
+    "--doc",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to a specification document to extract the feature from.",
+)
+@click.option(
+    "--section",
+    default=None,
+    help="Heading text of the section in --doc to extract (case-sensitive, no # prefix).",
+)
+def init(
+    repo_path: Path,
+    feature_request: str | None,
+    doc: Path | None,
+    section: str | None,
+) -> None:
     """Initialize a new agent design session.
 
-    REPO_PATH: path to the target repository
-    FEATURE_REQUEST: description of the feature to design
+    Provide the feature either as a free-text argument:
+
+      agent-design init ~/repo "Build a news-admin CLI"
+
+    Or by pointing to a section in a specification document:
+
+      agent-design init ~/repo --doc docs/pipeline-architecture.md \\
+          --section "Phase 6 — Admin & Re-run Tooling"
+
+    The --doc/--section form makes one Claude call to extract a concise feature
+    description from the document section before starting the session.
     """
+    # ── Input validation ──────────────────────────────────────────────────────
+    using_doc = doc is not None or section is not None
+
+    if feature_request and using_doc:
+        raise click.UsageError("Provide either a feature_request argument OR --doc/--section, not both.")
+    if using_doc and not (doc and section):
+        raise click.UsageError("--doc and --section must be used together.")
+    if not feature_request and not using_doc:
+        raise click.UsageError("Provide a feature_request argument or use --doc + --section.")
+
+    # ── Extract feature from doc if needed ────────────────────────────────────
+    if using_doc:
+        assert doc is not None and section is not None  # mypy
+        console.print(f"[dim]Extracting feature from {doc} § {section}...[/dim]")
+        try:
+            feature_request = extract_feature_from_doc(doc, section)
+        except ValueError as e:
+            raise click.ClickException(str(e)) from e
+        except RuntimeError as e:
+            raise click.ClickException(str(e)) from e
+        console.print(Panel(feature_request, title="[cyan]Extracted feature[/cyan]", border_style="cyan"))
+
+    assert feature_request is not None  # mypy — guaranteed by validation above
     repo_path = repo_path.resolve()
     slug = generate_slug(feature_request)
 
