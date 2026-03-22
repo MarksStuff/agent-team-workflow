@@ -1,8 +1,13 @@
 """Git operations for worktree management and checkpointing."""
 
+import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+
+from rich.console import Console
+
+console = Console()
 
 
 def _nosign_flags(cwd: Path) -> list[str]:
@@ -31,6 +36,22 @@ def _nosign_flags(cwd: Path) -> list[str]:
     if not _get("user.email"):
         flags += ["-c", "user.email=agent-design@localhost"]
     return flags
+
+
+# Helper to run git commands with error reporting
+def _run_git_in_target(cmd_args: list[str], cwd: Path, env: dict[str, str], error_msg: str) -> None:
+    result = subprocess.run(
+        ["git"] + cmd_args,
+        cwd=cwd,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        console.print(f"[red]✗ {error_msg}: {result.returncode}[/red]")
+        console.print(f"[dim]  stdout: {result.stdout.strip()}[/dim]")
+        console.print(f"[dim]  stderr: {result.stderr.strip()}[/dim]")
+        raise subprocess.CalledProcessError(result.returncode, cmd_args, result.stdout, result.stderr)
 
 
 @dataclass
@@ -63,64 +84,78 @@ def setup_worktree(repo_path: Path, slug: str) -> Path:
     """
     branch_name = f"agent-design/{slug}"
     worktree_path = repo_path / ".agent-design"
+    repo_env = os.environ.copy()
 
     # Ensure the orphan branch does not exist (delete if it does)
     try:
+        # Check if branch exists
         subprocess.run(
             ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch_name}"],
             cwd=repo_path,
             check=True,
             capture_output=True,
+            env=repo_env,  # Added env
         )
-        # If show-ref returns 0, branch exists. Delete it.
-        subprocess.run(
-            ["git", "branch", "-D", branch_name],
+        # If show-ref returns 0, branch exists. Delete it forcibly.
+        console.print(f"[dim]Deleting existing branch {branch_name} in {repo_path.name}...[/dim]")
+        _run_git_in_target(
+            ["branch", "-D", "--force", branch_name],
             cwd=repo_path,
-            check=True,
-            capture_output=True,
+            env=repo_env,
+            error_msg="Failed to delete existing orphan branch",
         )
+        console.print(f"[green]✓[/green] Deleted old branch {branch_name}.")
     except subprocess.CalledProcessError:
-        # Branch does not exist, or delete failed (this is handled by check=True)
+        # Branch does not exist, or delete failed (this is handled by _run_git_in_target)
+        console.print(
+            f"[dim]Branch {branch_name} does not exist in {repo_path.name}, or could not be deleted (safe to ignore).[/dim]"
+        )
         pass
 
     # Create orphan branch
-    subprocess.run(
-        ["git", "checkout", "--orphan", branch_name],
+    _run_git_in_target(
+        ["checkout", "--orphan", branch_name],
         cwd=repo_path,
-        check=True,
-        capture_output=True,
+        env=repo_env,
+        error_msg="Failed to create orphan branch",
     )
 
     # Remove all files from staging
-    subprocess.run(
-        ["git", "rm", "-rf", "."],
+    _run_git_in_target(
+        ["rm", "-rf", "."],
         cwd=repo_path,
-        check=False,  # May fail if no files exist
-        capture_output=True,
+        env=repo_env,
+        error_msg="Failed to remove files from staging",
     )
 
     # Create initial empty commit
-    subprocess.run(
-        ["git", *_nosign_flags(repo_path), "commit", "--allow-empty", "-m", f"init: agent design session — {slug}"],
+    _run_git_in_target(
+        [
+            *_nosign_flags(repo_path),
+            "commit",
+            "--allow-empty",
+            "-m",
+            f"init: agent design session — {slug}",
+        ],
         cwd=repo_path,
-        check=True,
-        capture_output=True,
+        env=repo_env,
+        error_msg="Failed to create initial empty commit",
     )
 
     # Return to main branch
-    subprocess.run(
-        ["git", "checkout", "main"],
+    _run_git_in_target(
+        ["checkout", "main"],
         cwd=repo_path,
-        check=True,
-        capture_output=True,
+        env=repo_env,
+        error_msg="Failed to switch back to main branch",
     )
 
     # Add worktree
-    subprocess.run(
-        ["git", "worktree", "add", str(worktree_path), branch_name],
+    _run_git_in_target(
+        ["worktree", "add", str(worktree_path), branch_name],
         cwd=repo_path,
-        check=True,
-        capture_output=True,
+        env=repo_env,
+        error_msg="Failed to add worktree",
     )
 
     # Add to .gitignore if not present
@@ -149,11 +184,13 @@ def detect_existing_worktree(repo_path: Path) -> Path | None:
     if worktree_path.exists() and worktree_path.is_dir():
         # Verify it's actually a git worktree
         try:
+            repo_env = os.environ.copy()
             subprocess.run(
                 ["git", "rev-parse", "--git-dir"],
                 cwd=worktree_path,
                 check=True,
                 capture_output=True,
+                env=repo_env,  # Added env
             )
             return worktree_path
         except subprocess.CalledProcessError:
@@ -172,28 +209,30 @@ def checkpoint(worktree_path: Path, message: str, tag: str) -> None:
     Raises:
         subprocess.CalledProcessError: If git commands fail
     """
+    repo_env = os.environ.copy()
+
     # Stage all changes
-    subprocess.run(
-        ["git", "add", "-A"],
+    _run_git_in_target(
+        ["add", "-A"],
         cwd=worktree_path,
-        check=True,
-        capture_output=True,
+        env=repo_env,
+        error_msg="Failed to stage changes for checkpoint",
     )
 
     # Commit
-    subprocess.run(
-        ["git", *_nosign_flags(worktree_path), "commit", "-m", message],
+    _run_git_in_target(
+        ["commit", "-m", message],
         cwd=worktree_path,
-        check=True,
-        capture_output=True,
+        env=repo_env,
+        error_msg="Failed to commit checkpoint",
     )
 
     # Create tag (force-overwrite in case a previous failed run left one behind)
-    subprocess.run(
-        ["git", *_nosign_flags(worktree_path), "tag", "-f", tag],
+    _run_git_in_target(
+        ["tag", "-f", tag],
         cwd=worktree_path,
-        check=True,
-        capture_output=True,
+        env=repo_env,
+        error_msg="Failed to create tag",
     )
     # Note: orphan branch is local crash-recovery state; no remote push needed.
 
@@ -208,11 +247,12 @@ def rollback_to(worktree_path: Path, tag: str) -> None:
     Raises:
         subprocess.CalledProcessError: If git commands fail
     """
-    subprocess.run(
-        ["git", "checkout", tag],
+    repo_env = os.environ.copy()
+    _run_git_in_target(
+        ["checkout", tag],
         cwd=worktree_path,
-        check=True,
-        capture_output=True,
+        env=repo_env,
+        error_msg="Failed to rollback to tag",
     )
 
 
@@ -228,6 +268,7 @@ def get_checkpoints(worktree_path: Path) -> list[Checkpoint]:
     Raises:
         subprocess.CalledProcessError: If git commands fail
     """
+    repo_env = os.environ.copy()
     # Get all tags with commit info
     result = subprocess.run(
         ["git", "log", "--oneline", "--decorate", "--tags", "--no-walk"],
@@ -235,6 +276,7 @@ def get_checkpoints(worktree_path: Path) -> list[Checkpoint]:
         check=True,
         capture_output=True,
         text=True,
+        env=repo_env,
     )
 
     checkpoints = []
@@ -266,6 +308,7 @@ def get_checkpoints(worktree_path: Path) -> list[Checkpoint]:
             check=True,
             capture_output=True,
             text=True,
+            env=repo_env,
         )
         date = date_result.stdout.strip()
 
@@ -286,12 +329,14 @@ def get_current_commit(repo_path: Path) -> str:
     Raises:
         subprocess.CalledProcessError: If git command fails
     """
+    repo_env = os.environ.copy()
     result = subprocess.run(
         ["git", "rev-parse", "HEAD"],
         cwd=repo_path,
         check=True,
         capture_output=True,
         text=True,
+        env=repo_env,
     )
     return result.stdout.strip()
 
@@ -307,11 +352,12 @@ def remove_worktree(repo_path: Path) -> None:
     """
     worktree_path = repo_path / ".agent-design"
     if worktree_path.exists():
-        subprocess.run(
-            ["git", "worktree", "remove", str(worktree_path)],
+        repo_env = os.environ.copy()
+        _run_git_in_target(
+            ["worktree", "remove", "--force", str(worktree_path)],
             cwd=repo_path,
-            check=True,
-            capture_output=True,
+            env=repo_env,
+            error_msg="Failed to remove worktree",
         )
 
 
@@ -326,19 +372,20 @@ def delete_orphan_branch(repo_path: Path, branch_name: str, remote: bool = True)
     Raises:
         subprocess.CalledProcessError: If git commands fail
     """
+    repo_env = os.environ.copy()
     # Delete local branch
-    subprocess.run(
-        ["git", "branch", "-D", branch_name],
+    _run_git_in_target(
+        ["branch", "-D", "--force", branch_name],
         cwd=repo_path,
-        check=True,
-        capture_output=True,
+        env=repo_env,
+        error_msg="Failed to delete local branch",
     )
 
     # Delete remote branch if requested
     if remote:
-        subprocess.run(
-            ["git", "push", "origin", "--delete", branch_name],
+        _run_git_in_target(
+            ["push", "origin", "--delete", branch_name],
             cwd=repo_path,
-            check=True,
-            capture_output=True,
+            env=repo_env,
+            error_msg="Failed to delete remote branch",
         )
