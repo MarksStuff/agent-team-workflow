@@ -115,14 +115,28 @@ def _create_or_update_pr(state_phase_before: str, worktree_path: Path, state: Ro
             )
 
         # Copy design artifacts from worktree to target repo
+        console.print(f"[dim]Attempting to copy design artifacts to {target_repo}/docs/design/{slug}/...[/dim]")
         design_dir = target_repo / "docs" / "design" / slug
+        console.print(f"[dim]  Design directory path: {design_dir}[/dim]")
         design_dir.mkdir(parents=True, exist_ok=True)
+        console.print(f"[dim]  Design directory exists after mkdir: {design_dir.exists()}[/dim]")
         for artifact in ["DESIGN.md", "DECISIONS.md"]:
             src = worktree_path / artifact
+            console.print(f"[dim]  Copying artifact: {artifact} from {src}[/dim]")
+            console.print(f"[dim]  Source exists: {src.exists()}[/dim]")
             if src.exists():
                 (design_dir / artifact).write_text(src.read_text())
+                console.print(f"[green]✓[/green] Copied {artifact}")
+            else:
+                console.print(f"[yellow]⚠ Source artifact {artifact} not found at {src}[/yellow]")
 
         # Commit to target repo on the new branch
+        _run_git_in_target(
+            ["add", "."],  # Add all changes including .gitignore and docs/design/<slug>
+            cwd=target_repo,
+            env=repo_env,
+            error_msg="Failed to add design artifacts",
+        )
         _run_git_in_target(
             [*_nosign_flags(target_repo), "commit", "--no-verify", "-m", f"design: {slug} — update design artifacts"],
             cwd=target_repo,
