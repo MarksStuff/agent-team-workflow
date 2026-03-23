@@ -1,7 +1,10 @@
 """agent-design next — run the next design stage (team session)."""
 
+import json as json_module
 import os
 import subprocess
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 import click
@@ -19,107 +22,122 @@ ROXY_GITHUB_TOKEN = Path.home() / ".roxy_github_token"
 
 
 def _gh(*args: str) -> subprocess.CompletedProcess[str]:
-    """Run a gh CLI command using Roxy's token."""
-    env_token = ROXY_GITHUB_TOKEN.read_text().strip() if ROXY_GITHUB_TOKEN.exists() else None
-
+    """Run a gh CLI command using Roxy's token (used for PR creation/push only)."""
     env = os.environ.copy()
-    if env_token:
-        env["GH_TOKEN"] = env_token
+    if ROXY_GITHUB_TOKEN.exists():
+        env["GH_TOKEN"] = ROXY_GITHUB_TOKEN.read_text().strip()
     return subprocess.run(["gh", *args], capture_output=True, text=True, env=env)
+
+
+# ---------------------------------------------------------------------------
+# GitHub REST API helpers — no gh CLI required, just a token
+# ---------------------------------------------------------------------------
+
+
+def _github_token() -> str | None:
+    """Return a GitHub API token from ~/.roxy_github_token or env vars."""
+    if ROXY_GITHUB_TOKEN.exists():
+        return ROXY_GITHUB_TOKEN.read_text().strip()
+    return os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+
+
+def _github_get(path: str) -> object:
+    """GET from the GitHub REST API and return parsed JSON.
+
+    Args:
+        path: e.g. 'repos/owner/repo/pulls/1/comments'
+
+    Raises:
+        click.Abort: On HTTP error with diagnostic output.
+    """
+    token = _github_token()
+    url = f"https://api.github.com/{path}"
+    req = urllib.request.Request(url)
+    req.add_header("Accept", "application/vnd.github+json")
+    req.add_header("X-GitHub-Api-Version", "2022-11-28")
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return json_module.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")
+        console.print(f"[red]✗ GitHub API {url} → HTTP {e.code}[/red]")
+        console.print(f"[red]  {body[:300]}[/red]")
+        if e.code == 401:
+            console.print("[dim]  Hint: provide ~/.roxy_github_token or set GITHUB_TOKEN env var[/dim]")
+        raise click.Abort() from e
 
 
 def _parse_pr_url(pr_url: str) -> tuple[str, str, str]:
     """Parse a GitHub PR URL into (owner, repo, number).
 
-    Handles both https://github.com/owner/repo/pull/N and owner/repo#N forms.
+    e.g. https://github.com/owner/repo/pull/123 → ('owner', 'repo', '123')
     """
-    # https://github.com/owner/repo/pull/123
     url = pr_url.rstrip("/")
     parts = url.split("/")
-    # Expected: ['https:', '', 'github.com', 'owner', 'repo', 'pull', '123']
-    owner = parts[-4]
-    repo = parts[-3]
-    number = parts[-1]
-    return owner, repo, number
+    # ['https:', '', 'github.com', 'owner', 'repo', 'pull', '123']
+    return parts[-4], parts[-3], parts[-1]
 
 
 def _fetch_pr_feedback(pr_url: str, round_num: int, worktree_path: Path) -> Path:
-    """Fetch PR review comments and write to feedback/human-round-N.md.
+    """Fetch PR review comments via GitHub REST API and write to feedback/human-round-N.md.
+
+    Uses urllib directly — no gh CLI or gh auth required, only a GitHub token.
 
     Raises:
-        click.Abort: If gh commands fail (with full diagnostic output printed).
+        click.Abort: On API or URL parse error.
     """
     feedback_dir = worktree_path / "feedback"
     feedback_dir.mkdir(exist_ok=True)
     feedback_file = feedback_dir / f"human-round-{round_num}.md"
 
-    lines: list[str] = [f"# Human Feedback — Round {round_num}\n"]
-
-    # 1. General PR comments (issue comments) + review summary bodies
-    console.print(f"[dim]Fetching reviews/comments from {pr_url}...[/dim]")
-    result = _gh(
-        "pr",
-        "view",
-        pr_url,
-        "--json",
-        "reviews,comments",
-        "--jq",
-        (
-            r'(.reviews[] | select(.body != "") | "### Review by \(.author.login)\n\n\(.body)\n") , '
-            r'(.comments[] | "### Comment by \(.author.login)\n\n\(.body)\n")'
-        ),
-    )
-    console.print(
-        f"[dim]  exit={result.returncode} stdout={len(result.stdout)} bytes stderr={result.stderr.strip()!r}[/dim]"
-    )
-    if result.returncode != 0:
-        console.print(f"[red]✗ gh pr view failed (exit {result.returncode}):[/red]")
-        console.print(f"[red]  stdout: {result.stdout.strip()}[/red]")
-        console.print(f"[red]  stderr: {result.stderr.strip()}[/red]")
-        raise click.Abort()
-    if result.stdout.strip():
-        lines.append("## Reviews & General Comments\n")
-        lines.append(result.stdout.strip())
-        lines.append("")
-
-    # 2. Inline review diff comments via REST API
     try:
         owner, repo, number = _parse_pr_url(pr_url)
     except (IndexError, ValueError) as e:
-        console.print(f"[red]✗ Could not parse PR URL '{pr_url}': {e}[/red]")
+        console.print(f"[red]✗ Cannot parse PR URL '{pr_url}': {e}[/red]")
         raise click.Abort() from e
 
-    console.print(f"[dim]Fetching inline comments from {owner}/{repo}#{number}...[/dim]")
-    api_result = _gh(
-        "api",
-        f"repos/{owner}/{repo}/pulls/{number}/comments",
-        "--jq",
-        r'.[] | "### Inline comment by \(.user.login) on `\(.path)` line \(.line // "?")\n\n\(.body)\n"',
-    )
-    console.print(
-        f"[dim]  exit={api_result.returncode} stdout={len(api_result.stdout)} bytes stderr={api_result.stderr.strip()!r}[/dim]"
-    )
-    if api_result.returncode != 0:
-        console.print(f"[red]✗ gh api pull comments failed (exit {api_result.returncode}):[/red]")
-        console.print(f"[red]  stdout: {api_result.stdout.strip()}[/red]")
-        console.print(f"[red]  stderr: {api_result.stderr.strip()}[/red]")
-        raise click.Abort()
-    if api_result.stdout.strip():
+    console.print(f"[dim]Fetching PR feedback for {owner}/{repo}#{number}...[/dim]")
+    lines: list[str] = [f"# Human Feedback — Round {round_num}\n"]
+
+    # 1. Inline diff comments (line-level review comments)
+    inline = _github_get(f"repos/{owner}/{repo}/pulls/{number}/comments")
+    assert isinstance(inline, list)
+    if inline:
         lines.append("## Inline Review Comments\n")
-        lines.append(api_result.stdout.strip())
-        lines.append("")
+        for c in inline:
+            author = c.get("user", {}).get("login", "unknown")
+            path = c.get("path", "?")
+            line = c.get("line") or c.get("original_line") or "?"
+            body = c.get("body", "").strip()
+            lines.append(f"### {author} on `{path}` line {line}\n\n{body}\n")
+
+    # 2. General PR thread comments
+    issue_comments = _github_get(f"repos/{owner}/{repo}/issues/{number}/comments")
+    assert isinstance(issue_comments, list)
+
+    # 3. Review submission bodies (the summary text on each review)
+    reviews = _github_get(f"repos/{owner}/{repo}/pulls/{number}/reviews")
+    assert isinstance(reviews, list)
+    review_bodies = [r for r in reviews if r.get("body", "").strip()]
+
+    thread = list(issue_comments) + review_bodies
+    if thread:
+        lines.append("## Reviews & General Comments\n")
+        for item in thread:
+            author = item.get("user", {}).get("login", "unknown")
+            body = item.get("body", "").strip()
+            lines.append(f"### {author}\n\n{body}\n")
 
     feedback_file.write_text("\n".join(lines) + "\n")
-    console.print(f"[green]✓[/green] PR feedback written to {feedback_file.name}")
+    total = len(inline) + len(thread)
+    console.print(f"[green]✓[/green] PR feedback written to {feedback_file.name} ({total} comments)")
     return feedback_file
 
 
 def _create_or_update_pr(state_phase_before: str, worktree_path: Path, state: RoundState) -> str | None:
-    """Create or update PR for design artifacts.
-
-    Manages Git branch creation/checkout, copying artifacts, committing,
-    pushing, and (for first time) creating the GitHub PR.
-    """
+    """Create or update PR for design artifacts."""
     target_repo = Path(state.target_repo)
     slug = state.feature_slug
     pr_url = state.pr_url
@@ -129,7 +147,6 @@ def _create_or_update_pr(state_phase_before: str, worktree_path: Path, state: Ro
     if ROXY_GITHUB_TOKEN.exists():
         repo_env["GH_TOKEN"] = ROXY_GITHUB_TOKEN.read_text().strip()
 
-    # Get current branch to switch back to it later
     result = subprocess.run(
         ["git", "rev-parse", "--abbrev-ref", "HEAD"],
         cwd=target_repo,
@@ -141,16 +158,14 @@ def _create_or_update_pr(state_phase_before: str, worktree_path: Path, state: Ro
 
     try:
         if pr_url is None:
-            # First time — create new branch
             console.print(f"[dim]Creating new branch {design_branch_name} in {target_repo.name}...[/dim]")
             _run_git_in_target(
-                ["checkout", "-b", design_branch_name, f"origin/{original_branch}"],  # Base on original branch
+                ["checkout", "-b", design_branch_name, f"origin/{original_branch}"],
                 cwd=target_repo,
                 env=repo_env,
                 error_msg="Failed to create new branch",
             )
         else:
-            # Updating existing PR — checkout branch and pull latest
             console.print(f"[dim]Checking out branch {design_branch_name} in {target_repo.name}...[/dim]")
             _run_git_in_target(
                 ["checkout", design_branch_name],
@@ -166,25 +181,18 @@ def _create_or_update_pr(state_phase_before: str, worktree_path: Path, state: Ro
                 error_msg="Failed to pull latest changes",
             )
 
-        # Copy design artifacts from worktree to target repo
-        console.print(f"[dim]Attempting to copy design artifacts to {target_repo}/docs/design/{slug}/...[/dim]")
         design_dir = target_repo / "docs" / "design" / slug
-        console.print(f"[dim]  Design directory path: {design_dir}[/dim]")
         design_dir.mkdir(parents=True, exist_ok=True)
-        console.print(f"[dim]  Design directory exists after mkdir: {design_dir.exists()}[/dim]")
         for artifact in ["DESIGN.md", "DECISIONS.md"]:
             src = worktree_path / artifact
-            console.print(f"[dim]  Copying artifact: {artifact} from {src}[/dim]")
-            console.print(f"[dim]  Source exists: {src.exists()}[/dim]")
             if src.exists():
                 (design_dir / artifact).write_text(src.read_text())
                 console.print(f"[green]✓[/green] Copied {artifact}")
             else:
-                console.print(f"[yellow]⚠ Source artifact {artifact} not found at {src}[/yellow]")
+                console.print(f"[yellow]⚠ {artifact} not found at {src}[/yellow]")
 
-        # Commit to target repo on the new branch
         _run_git_in_target(
-            ["add", "."],  # Add all changes including .gitignore and docs/design/<slug>
+            ["add", "."],
             cwd=target_repo,
             env=repo_env,
             error_msg="Failed to add design artifacts",
@@ -197,8 +205,6 @@ def _create_or_update_pr(state_phase_before: str, worktree_path: Path, state: Ro
         )
         console.print(f"[green]✓[/green] Design artifacts committed to {design_branch_name}")
 
-        # Push to remote
-        console.print(f"[dim]Pushing {design_branch_name} to origin...[/dim]")
         _run_git_in_target(
             ["push", "-u", "origin", design_branch_name],
             cwd=target_repo,
@@ -208,9 +214,8 @@ def _create_or_update_pr(state_phase_before: str, worktree_path: Path, state: Ro
         console.print(f"[green]✓[/green] Branch {design_branch_name} pushed to origin")
 
         if pr_url is None:
-            # First time — create PR
             console.print("[dim]Creating GitHub PR...[/dim]")
-            result = _gh(
+            gh_result = _gh(
                 "pr",
                 "create",
                 "--repo",
@@ -218,18 +223,18 @@ def _create_or_update_pr(state_phase_before: str, worktree_path: Path, state: Ro
                 "--title",
                 f"design: {slug}",
                 "--body",
-                f"Design document for: {state.feature_request}\\n\\nArtifacts: `docs/design/{slug}/`",
+                f"Design document for: {state.feature_request}\n\nArtifacts: `docs/design/{slug}/`",
                 "--head",
-                design_branch_name,  # Specify head branch
+                design_branch_name,
                 "--base",
-                "main",  # Specify base branch
+                "main",
             )
-            if result.returncode == 0:
-                url = result.stdout.strip()
+            if gh_result.returncode == 0:
+                url = gh_result.stdout.strip()
                 console.print(f"[green]✓[/green] PR created: {url}")
                 return url
             else:
-                console.print(f"[red]✗ PR creation failed: {result.stderr}[/red]")
+                console.print(f"[red]✗ PR creation failed: {gh_result.stderr}[/red]")
         else:
             console.print(f"[green]✓[/green] PR updated: {pr_url}")
 
@@ -237,15 +242,13 @@ def _create_or_update_pr(state_phase_before: str, worktree_path: Path, state: Ro
         console.print("[red]✗ Git/GitHub operation failed. Check logs above for details.[/red]")
         return None
     finally:
-        # Always switch back to the original branch
-        console.print(f"[dim]Switching back to original branch ({original_branch})...[/dim]")
+        console.print(f"[dim]Switching back to {original_branch}...[/dim]")
         _run_git_in_target(
             ["checkout", original_branch],
             cwd=target_repo,
             env=repo_env,
             error_msg="Failed to switch back to original branch",
         )
-        console.print(f"[green]✓[/green] Switched back to {original_branch}.")
 
     return pr_url
 
@@ -259,7 +262,6 @@ def _get_repo_name(repo_path: Path) -> str:
         text=True,
     )
     url = result.stdout.strip()
-    # Handle git@github.com:owner/repo.git or https://github.com/owner/repo
     url = url.replace("git@github.com:", "").replace("https://github.com/", "")
     return url.removesuffix(".git")
 
@@ -285,10 +287,9 @@ def next_round(repo_path: Path) -> None:
         raise click.Abort() from None
 
     state = load_round_state(worktree_path)
-    console.print(f"\\n[bold]agent-design next[/bold] — [cyan]{state.feature_slug}[/cyan] (phase: {state.phase})\\n")
+    console.print(f"\n[bold]agent-design next[/bold] — [cyan]{state.feature_slug}[/cyan] (phase: {state.phase})\n")
 
     if state.phase == "open_discussion":
-        # ── Stage 2: design review agent team ────────────────────────────────
         console.print(Panel("Stage 2 — Agent team: design review", border_style="magenta"))
         start_message = build_review_start(state.feature_request)
         rc = run_team(worktree_path, Path(state.target_repo), start_message)
@@ -300,9 +301,8 @@ def next_round(repo_path: Path) -> None:
         state.phase = "awaiting_human"
         save_round_state(worktree_path, state)
         checkpoint(worktree_path, "stage 2: design review complete", "chk-review")
-        console.print("[green]✓[/green] Checkpoint: chk-review\\n")
+        console.print("[green]✓[/green] Checkpoint: chk-review\n")
 
-        # Push design artifacts and create PR
         pr_url = _create_or_update_pr("open_discussion", worktree_path, state)
         if pr_url:
             state.pr_url = pr_url
@@ -311,8 +311,8 @@ def next_round(repo_path: Path) -> None:
 
         console.print(
             Panel(
-                "Review the PR, leave comments, then run:\\n\\n"
-                "  [bold cyan]agent-design next[/bold cyan]\\n\\n"
+                "Review the PR, leave comments, then run:\n\n"
+                "  [bold cyan]agent-design next[/bold cyan]\n\n"
                 "to have the team incorporate your feedback.",
                 title="[green]✓ Design review complete[/green]",
                 border_style="green",
@@ -320,7 +320,6 @@ def next_round(repo_path: Path) -> None:
         )
 
     elif state.phase == "awaiting_human":
-        # ── Stage 3+: incorporate human feedback ─────────────────────────────
         round_num = state.discussion_turns + 1
         console.print(
             Panel(
@@ -348,7 +347,7 @@ def next_round(repo_path: Path) -> None:
         tag = f"chk-feedback-{round_num}"
         save_round_state(worktree_path, state)
         checkpoint(worktree_path, f"stage {round_num + 2}: feedback round {round_num} complete", tag)
-        console.print(f"[green]✓[/green] Checkpoint: {tag}\\n")
+        console.print(f"[green]✓[/green] Checkpoint: {tag}\n")
 
         _create_or_update_pr("awaiting_human", worktree_path, state)
 
