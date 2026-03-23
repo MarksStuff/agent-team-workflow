@@ -28,35 +28,79 @@ def _gh(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(["gh", *args], capture_output=True, text=True, env=env)
 
 
+def _parse_pr_url(pr_url: str) -> tuple[str, str, str]:
+    """Parse a GitHub PR URL into (owner, repo, number).
+
+    Handles both https://github.com/owner/repo/pull/N and owner/repo#N forms.
+    """
+    # https://github.com/owner/repo/pull/123
+    url = pr_url.rstrip("/")
+    parts = url.split("/")
+    # Expected: ['https:', '', 'github.com', 'owner', 'repo', 'pull', '123']
+    owner = parts[-4]
+    repo = parts[-3]
+    number = parts[-1]
+    return owner, repo, number
+
+
 def _fetch_pr_feedback(pr_url: str, round_num: int, worktree_path: Path) -> Path:
     """Fetch PR review comments and write to feedback/human-round-N.md."""
     feedback_dir = worktree_path / "feedback"
     feedback_dir.mkdir(exist_ok=True)
     feedback_file = feedback_dir / f"human-round-{round_num}.md"
 
+    lines: list[str] = [f"# Human Feedback — Round {round_num}\n"]
+    ok = True
+
+    # 1. General PR comments (issue comments) + review summary bodies
     result = _gh(
         "pr",
         "view",
         pr_url,
         "--json",
-        "reviews,comments,reviewComments",
+        "reviews,comments",
         "--jq",
         (
-            r'["=== Review Comments ==="] + '
-            r'(.reviews[] | select(.body != "") | ["Review by \(.author.login):", .body]) + '
-            r'["=== Inline Comments ==="] + '
-            r'(.reviewComments[] | ["File: \(.path) (line \(.line // "?")):", .body]) + '
-            r'["=== General Comments ==="] + '
-            r'(.comments[] | ["Comment by \(.author.login):", .body]) '
-            r"| .[]"
+            r'(.reviews[] | select(.body != "") | "### Review by \(.author.login)\n\n\(.body)\n") , '
+            r'(.comments[] | "### Comment by \(.author.login)\n\n\(.body)\n")'
         ),
     )
     if result.returncode != 0:
-        console.print(f"[yellow]⚠ Could not fetch PR comments: {result.stderr}[/yellow]")
+        console.print(f"[yellow]⚠ Could not fetch PR reviews/comments: {result.stderr}[/yellow]")
+        ok = False
+    elif result.stdout.strip():
+        lines.append("## Reviews & General Comments\n")
+        lines.append(result.stdout.strip())
+        lines.append("")
+
+    # 2. Inline review diff comments via REST API
+    try:
+        owner, repo, number = _parse_pr_url(pr_url)
+    except (IndexError, ValueError) as e:
+        console.print(f"[yellow]⚠ Could not parse PR URL '{pr_url}': {e}[/yellow]")
+        owner = repo = number = ""
+
+    if owner and repo and number:
+        api_result = _gh(
+            "api",
+            f"repos/{owner}/{repo}/pulls/{number}/comments",
+            "--jq",
+            r'.[] | "### Inline comment by \(.user.login) on `\(.path)` line \(.line // "?")\n\n\(.body)\n"',
+        )
+        if api_result.returncode != 0:
+            console.print(f"[yellow]⚠ Could not fetch inline review comments: {api_result.stderr}[/yellow]")
+            ok = False
+        elif api_result.stdout.strip():
+            lines.append("## Inline Review Comments\n")
+            lines.append(api_result.stdout.strip())
+            lines.append("")
+
+    if not ok and len(lines) == 1:
+        # Nothing fetched at all — write placeholder
         console.print("Add feedback manually to: " + str(feedback_file))
-        feedback_file.write_text(f"# Human Feedback — Round {round_num}\\n\\n(add feedback here)\\n")
+        feedback_file.write_text(f"# Human Feedback — Round {round_num}\n\n(add feedback here)\n")
     else:
-        feedback_file.write_text(f"# Human Feedback — Round {round_num}\\n\\n{result.stdout.strip()}\\n")
+        feedback_file.write_text("\n".join(lines) + "\n")
         console.print(f"[green]✓[/green] PR feedback written to {feedback_file.name}")
 
     return feedback_file
