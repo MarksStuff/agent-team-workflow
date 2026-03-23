@@ -34,7 +34,23 @@ def _fetch_pr_feedback(pr_url: str, round_num: int, worktree_path: Path) -> Path
     feedback_dir.mkdir(exist_ok=True)
     feedback_file = feedback_dir / f"human-round-{round_num}.md"
 
-    result = _gh("pr", "view", pr_url, "--json", "reviews,comments", "--jq", ".reviews[].body, .comments[].body")
+    result = _gh(
+        "pr",
+        "view",
+        pr_url,
+        "--json",
+        "reviews,comments,reviewComments",
+        "--jq",
+        (
+            r'["=== Review Comments ==="] + '
+            r'(.reviews[] | select(.body != "") | ["Review by \(.author.login):", .body]) + '
+            r'["=== Inline Comments ==="] + '
+            r'(.reviewComments[] | ["File: \(.path) (line \(.line // "?")):", .body]) + '
+            r'["=== General Comments ==="] + '
+            r'(.comments[] | ["Comment by \(.author.login):", .body]) '
+            r"| .[]"
+        ),
+    )
     if result.returncode != 0:
         console.print(f"[yellow]⚠ Could not fetch PR comments: {result.stderr}[/yellow]")
         console.print("Add feedback manually to: " + str(feedback_file))
