@@ -44,15 +44,19 @@ def _parse_pr_url(pr_url: str) -> tuple[str, str, str]:
 
 
 def _fetch_pr_feedback(pr_url: str, round_num: int, worktree_path: Path) -> Path:
-    """Fetch PR review comments and write to feedback/human-round-N.md."""
+    """Fetch PR review comments and write to feedback/human-round-N.md.
+
+    Raises:
+        click.Abort: If gh commands fail (with full diagnostic output printed).
+    """
     feedback_dir = worktree_path / "feedback"
     feedback_dir.mkdir(exist_ok=True)
     feedback_file = feedback_dir / f"human-round-{round_num}.md"
 
     lines: list[str] = [f"# Human Feedback — Round {round_num}\n"]
-    ok = True
 
     # 1. General PR comments (issue comments) + review summary bodies
+    console.print(f"[dim]Fetching reviews/comments from {pr_url}...[/dim]")
     result = _gh(
         "pr",
         "view",
@@ -65,10 +69,15 @@ def _fetch_pr_feedback(pr_url: str, round_num: int, worktree_path: Path) -> Path
             r'(.comments[] | "### Comment by \(.author.login)\n\n\(.body)\n")'
         ),
     )
+    console.print(
+        f"[dim]  exit={result.returncode} stdout={len(result.stdout)} bytes stderr={result.stderr.strip()!r}[/dim]"
+    )
     if result.returncode != 0:
-        console.print(f"[yellow]⚠ Could not fetch PR reviews/comments: {result.stderr}[/yellow]")
-        ok = False
-    elif result.stdout.strip():
+        console.print(f"[red]✗ gh pr view failed (exit {result.returncode}):[/red]")
+        console.print(f"[red]  stdout: {result.stdout.strip()}[/red]")
+        console.print(f"[red]  stderr: {result.stderr.strip()}[/red]")
+        raise click.Abort()
+    if result.stdout.strip():
         lines.append("## Reviews & General Comments\n")
         lines.append(result.stdout.strip())
         lines.append("")
@@ -77,32 +86,31 @@ def _fetch_pr_feedback(pr_url: str, round_num: int, worktree_path: Path) -> Path
     try:
         owner, repo, number = _parse_pr_url(pr_url)
     except (IndexError, ValueError) as e:
-        console.print(f"[yellow]⚠ Could not parse PR URL '{pr_url}': {e}[/yellow]")
-        owner = repo = number = ""
+        console.print(f"[red]✗ Could not parse PR URL '{pr_url}': {e}[/red]")
+        raise click.Abort() from e
 
-    if owner and repo and number:
-        api_result = _gh(
-            "api",
-            f"repos/{owner}/{repo}/pulls/{number}/comments",
-            "--jq",
-            r'.[] | "### Inline comment by \(.user.login) on `\(.path)` line \(.line // "?")\n\n\(.body)\n"',
-        )
-        if api_result.returncode != 0:
-            console.print(f"[yellow]⚠ Could not fetch inline review comments: {api_result.stderr}[/yellow]")
-            ok = False
-        elif api_result.stdout.strip():
-            lines.append("## Inline Review Comments\n")
-            lines.append(api_result.stdout.strip())
-            lines.append("")
+    console.print(f"[dim]Fetching inline comments from {owner}/{repo}#{number}...[/dim]")
+    api_result = _gh(
+        "api",
+        f"repos/{owner}/{repo}/pulls/{number}/comments",
+        "--jq",
+        r'.[] | "### Inline comment by \(.user.login) on `\(.path)` line \(.line // "?")\n\n\(.body)\n"',
+    )
+    console.print(
+        f"[dim]  exit={api_result.returncode} stdout={len(api_result.stdout)} bytes stderr={api_result.stderr.strip()!r}[/dim]"
+    )
+    if api_result.returncode != 0:
+        console.print(f"[red]✗ gh api pull comments failed (exit {api_result.returncode}):[/red]")
+        console.print(f"[red]  stdout: {api_result.stdout.strip()}[/red]")
+        console.print(f"[red]  stderr: {api_result.stderr.strip()}[/red]")
+        raise click.Abort()
+    if api_result.stdout.strip():
+        lines.append("## Inline Review Comments\n")
+        lines.append(api_result.stdout.strip())
+        lines.append("")
 
-    if not ok and len(lines) == 1:
-        # Nothing fetched at all — write placeholder
-        console.print("Add feedback manually to: " + str(feedback_file))
-        feedback_file.write_text(f"# Human Feedback — Round {round_num}\n\n(add feedback here)\n")
-    else:
-        feedback_file.write_text("\n".join(lines) + "\n")
-        console.print(f"[green]✓[/green] PR feedback written to {feedback_file.name}")
-
+    feedback_file.write_text("\n".join(lines) + "\n")
+    console.print(f"[green]✓[/green] PR feedback written to {feedback_file.name}")
     return feedback_file
 
 
@@ -321,12 +329,15 @@ def next_round(repo_path: Path) -> None:
             )
         )
 
-        if state.pr_url:
+        feedback_file = worktree_path / "feedback" / f"human-round-{round_num}.md"
+        if feedback_file.exists() and "(add feedback here)" not in feedback_file.read_text():
+            console.print(f"[green]✓[/green] Using existing feedback file: {feedback_file.name}")
+        elif state.pr_url:
             _fetch_pr_feedback(state.pr_url, round_num, worktree_path)
         else:
-            console.print(
-                f"[yellow]⚠ No PR URL in state — add feedback manually to feedback/human-round-{round_num}.md[/yellow]"
-            )
+            console.print(f"[red]✗ No PR URL in state and no feedback file at {feedback_file}[/red]")
+            console.print("[dim]  Fix: set pr_url in ROUND_STATE.json, or write the file manually[/dim]")
+            raise click.Abort()
 
         start_message = build_feedback_start(round_num)
         rc = run_team(worktree_path, Path(state.target_repo), start_message)
