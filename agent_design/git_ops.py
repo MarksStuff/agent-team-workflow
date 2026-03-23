@@ -408,3 +408,38 @@ def delete_orphan_branch(repo_path: Path, branch_name: str, remote: bool = True)
             env=repo_env,
             error_msg="Failed to delete remote branch",
         )
+
+
+def create_impl_branch(repo_path: Path, slug: str) -> str:
+    """Create feat/impl-{slug} branch from origin/main in the target repo.
+
+    Args:
+        repo_path: Path to target repository
+        slug: Feature slug for branch naming
+
+    Returns:
+        The created branch name
+
+    Raises:
+        subprocess.CalledProcessError: If git commands fail
+    """
+    branch_name = f"feat/impl-{slug}"
+    repo_env = os.environ.copy()
+
+    # Fetch latest main so we branch from the current tip
+    _run_git_in_target(
+        ["fetch", "origin", "main"],
+        cwd=repo_path,
+        env=repo_env,
+        error_msg="Failed to fetch origin/main",
+    )
+
+    # Create and checkout the impl branch from origin/main
+    _run_git_in_target(
+        ["checkout", "-b", branch_name, "origin/main"],
+        cwd=repo_path,
+        env=repo_env,
+        error_msg=f"Failed to create branch {branch_name}",
+    )
+
+    return branch_name

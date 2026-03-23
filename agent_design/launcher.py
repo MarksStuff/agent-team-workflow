@@ -137,3 +137,53 @@ def run_team(
         env=env,
     )
     return result.returncode
+
+
+def run_team_in_repo(
+    repo_path: Path,
+    worktree_path: Path,
+    start_message: str,
+) -> int:
+    """Launch an interactive claude agent team session in the target repo root.
+
+    Like run_team() but the working directory is the target repo root so
+    agents can read and write source files directly. The worktree is added
+    as an extra directory so agents can read .agent-design/DESIGN.md.
+
+    Args:
+        repo_path: Path to target repo (claude's working dir)
+        worktree_path: Path to .agent-design/ worktree (added as readable dir)
+        start_message: Initial message to paste into claude to start the team
+
+    Returns:
+        Exit code from claude process
+    """
+    env = os.environ.copy()
+    api_key = _get_api_key()
+    if api_key:
+        env["ANTHROPIC_API_KEY"] = api_key
+    env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] = "1"
+
+    cmd = [
+        "claude",
+        "--dangerously-skip-permissions",
+        "--add-dir",
+        str(worktree_path),
+    ]
+
+    console.print(
+        Panel(
+            start_message,
+            title="[bold cyan]Paste this to start the implementation sprint[/bold cyan]",
+            subtitle="[dim]Copy the text above and paste it when Claude starts[/dim]",
+            border_style="cyan",
+        )
+    )
+    console.print()
+
+    result = subprocess.run(
+        cmd,
+        cwd=str(repo_path),
+        env=env,
+    )
+    return result.returncode

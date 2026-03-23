@@ -6,6 +6,7 @@ from agent_design.cli.commands.checkpoints import checkpoints
 from agent_design.cli.commands.close import close
 from agent_design.cli.commands.diff import diff
 from agent_design.cli.commands.feedback import feedback
+from agent_design.cli.commands.impl import impl
 from agent_design.cli.commands.init import init
 from agent_design.cli.commands.next_round import next_round
 from agent_design.cli.commands.resume import resume
@@ -27,6 +28,7 @@ def cli() -> None:
 cli.add_command(init)
 cli.add_command(status)
 cli.add_command(next_round, name="next")
+cli.add_command(impl)
 cli.add_command(feedback)
 cli.add_command(checkpoints)
 cli.add_command(rollback)
