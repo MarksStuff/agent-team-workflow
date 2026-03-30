@@ -432,6 +432,29 @@ described in your identity above.
 The session ends when Phase 3 completes with full Architect + QA sign-off.
 """
 
+_STAGE_IMPL_TASK_RESUME = """\
+## Current task: Resume Implementation Sprint / Fix Round
+
+You are resuming an existing implementation sprint. The team should:
+
+1. Review .agent-design/DESIGN.md for any new changes or clarifications.
+2. Review TASKS.md for existing tasks, their status, and any new tasks.
+3. Review .agent-design/DISCUSSION.md for any pending discussions or blockers.
+4. Continue implementation, incorporating any new design changes and resolving
+   existing issues. The goal is still to implement everything in DESIGN.md.
+
+Key paths:
+- Design spec:  .agent-design/DESIGN.md
+- Decisions:    .agent-design/DECISIONS.md
+- Discussion:   .agent-design/DISCUSSION.md (shared peer channel)
+- Task board:   TASKS.md  (existing task board)
+
+Spawn your team of 4 with the prompts below, then continue the three phases
+described in your identity above.
+
+The session ends when Phase 3 completes with full Architect + QA sign-off.
+"""
+
 _IMPL_TEAMMATE_BLOCK = """\
 ---
 ### Teammate: {name}
@@ -545,7 +568,7 @@ At the final review:
 }
 
 
-def build_impl_start() -> str:
+def build_impl_start(is_resume: bool = False) -> str:
     """Build the Eng Manager start message for the implementation sprint."""
     teammate_blocks = "".join(
         _IMPL_TEAMMATE_BLOCK.format(
@@ -560,11 +583,10 @@ def build_impl_start() -> str:
             ("TDD Focused Engineer", AGENT_TDD_FOCUSSED_ENGINEER),
         ]
     )
-    return (
-        f"{AGENT_ENG_MANAGER_IMPL.strip()}\n\n"
-        f"{_STAGE_IMPL_TASK.strip()}\n\n"
-        f"## Teammate spawn prompts\n{teammate_blocks}"
-    )
+
+    impl_task_message = _STAGE_IMPL_TASK_RESUME.strip() if is_resume else _STAGE_IMPL_TASK.strip()
+
+    return f"{AGENT_ENG_MANAGER_IMPL.strip()}\n\n{impl_task_message}\n\n## Teammate spawn prompts\n{teammate_blocks}"
 
 
 def build_review_start(feature_request: str) -> str:

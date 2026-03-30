@@ -124,7 +124,12 @@ def _commit_and_push(
     default=".",
     help="Path to the target repository (default: current dir)",
 )
-def impl(repo_path: Path) -> None:
+@click.option(
+    "--resume",
+    is_flag=True,
+    help="Resume an existing implementation sprint. Assumes impl branch exists.",
+)
+def impl(repo_path: Path, resume: bool) -> None:
     """Run a self-organising implementation sprint.
 
     The agent team reads the approved DESIGN.md, self-organises into a sprint,
@@ -152,6 +157,9 @@ def impl(repo_path: Path) -> None:
         raise click.Abort() from None
 
     state = load_round_state(worktree_path)
+    slug = state.feature_slug
+    impl_branch_name = f"feat/impl-{slug}"
+    repo_env = os.environ.copy()  # Define repo_env early
 
     console.print(f"\n[bold]agent-design impl[/bold] — [cyan]{state.feature_slug}[/cyan]\n")
     console.print(
@@ -163,28 +171,63 @@ def impl(repo_path: Path) -> None:
         )
     )
 
-    # ── Create impl branch ──────────────────────────────────────────────────
-    console.print(f"\n[dim]Creating implementation branch in {repo_path.name}...[/dim]")
-    try:
-        branch_name = create_impl_branch(repo_path, state.feature_slug)
-    except subprocess.CalledProcessError:
-        console.print("[red]✗ Failed to create implementation branch. See error above.[/red]")
-        raise click.Abort() from None
-    console.print(f"[green]✓[/green] Branch: [cyan]{branch_name}[/cyan]\n")
+    # ── Branch handling ──────────────────────────────────────────────────
+    if resume:
+        console.print(
+            f"\n[dim]Resuming implementation sprint on branch {impl_branch_name} in {repo_path.name}...[/dim]"
+        )
+        try:
+            # Check if the branch actually exists
+            subprocess.run(
+                ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{impl_branch_name}"],
+                cwd=repo_path,
+                check=True,
+                capture_output=True,
+                env=repo_env,
+            )
+            # Checkout and pull latest
+            _run_git_in_target(
+                ["checkout", impl_branch_name],
+                cwd=repo_path,
+                env=repo_env,
+                error_msg=f"Failed to checkout existing branch {impl_branch_name}",
+            )
+            _run_git_in_target(
+                ["pull", "origin", impl_branch_name],
+                cwd=repo_path,
+                env=repo_env,
+                error_msg=f"Failed to pull latest changes for {impl_branch_name}",
+            )
+            console.print(f"[green]✓[/green] Resumed branch: [cyan]{impl_branch_name}[/cyan]\n")
+
+        except subprocess.CalledProcessError:
+            console.print(f"[red]✗ Implementation branch {impl_branch_name} not found for resume.[/red]")
+            console.print(
+                "[dim]  To start a new sprint, run without --resume. To resume, ensure the branch exists.[/dim]"
+            )
+            raise click.Abort() from None
+    else:  # Start a new sprint
+        console.print(f"\n[dim]Creating new implementation branch in {repo_path.name}...[/dim]")
+        try:
+            impl_branch_name = create_impl_branch(repo_path, state.feature_slug)
+        except subprocess.CalledProcessError:
+            console.print("[red]✗ Failed to create implementation branch. See error above.[/red]")
+            raise click.Abort() from None
+        console.print(f"[green]✓[/green] Branch: [cyan]{impl_branch_name}[/cyan]\n")
 
     # ── Launch team session ─────────────────────────────────────────────────
-    start_message = build_impl_start()
+    start_message = build_impl_start(is_resume=resume)  # Pass resume flag to build_impl_start
     rc = run_team_in_repo(repo_path, worktree_path, start_message)
     if rc != 0:
         console.print(f"[yellow]⚠ Claude exited with code {rc}[/yellow]")
 
     # ── Commit and push ─────────────────────────────────────────────────────
     console.print("\n[dim]Committing and pushing implementation...[/dim]")
-    _commit_and_push(repo_path, branch_name, state.feature_slug, state.feature_request, state.pr_url)
+    _commit_and_push(repo_path, impl_branch_name, state.feature_slug, state.feature_request, state.pr_url)
 
     console.print(
         Panel(
-            f"Branch [cyan]{branch_name}[/cyan] is ready for review.\n\n"
+            f"Branch [cyan]{impl_branch_name}[/cyan] is ready for review.\n\n"
             "Check the PR, verify CI passes, then merge when satisfied.",
             title="[green]✓ Implementation sprint complete[/green]",
             border_style="green",
