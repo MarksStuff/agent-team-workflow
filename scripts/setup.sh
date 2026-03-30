@@ -98,6 +98,20 @@ else
     echo "✅ Pre-push hook already installed"
 fi
 
+# ── CLAUDE.md symlink (global master in agent-instructions/) ─────────────────
+CLAUDE_SOURCE="agent-instructions/CLAUDE.md"
+CLAUDE_LINK="CLAUDE.md"
+
+if [ -L "$CLAUDE_LINK" ] && [ "$(readlink "$CLAUDE_LINK")" = "$CLAUDE_SOURCE" ]; then
+    echo "✅ CLAUDE.md symlink already correct"
+elif [ -e "$CLAUDE_LINK" ] && [ ! -L "$CLAUDE_LINK" ]; then
+    echo "⚠️  CLAUDE.md exists but is not a symlink — leaving it alone."
+    echo "   To use the canonical version: rm CLAUDE.md && ln -s $CLAUDE_SOURCE $CLAUDE_LINK"
+else
+    ln -sf "$CLAUDE_SOURCE" "$CLAUDE_LINK"
+    echo "✅ CLAUDE.md → $CLAUDE_SOURCE symlink created"
+fi
+
 # ── Git identity (Roxy's account) ────────────────────────────────────────────
 ROXY_EMAIL="269813048+roxy-mstriebeck@users.noreply.github.com"
 CURRENT_EMAIL=$(git config user.email 2>/dev/null || echo "")
