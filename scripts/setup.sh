@@ -110,8 +110,7 @@ if [ -L "$GLOBAL_CLAUDE_LINK" ] && [ "$(readlink "$GLOBAL_CLAUDE_LINK")" = "$GLO
     echo "✅ ~/.claude/CLAUDE.md symlink already correct"
 elif [ -e "$GLOBAL_CLAUDE_LINK" ] && [ ! -L "$GLOBAL_CLAUDE_LINK" ]; then
     echo "⚠️  ~/.claude/CLAUDE.md exists but is not a symlink — leaving it alone."
-    echo "   To replace with the canonical version:"
-    echo "     rm ~/.claude/CLAUDE.md && ln -s $GLOBAL_CLAUDE_SOURCE $GLOBAL_CLAUDE_LINK"
+    echo "   To replace: rm ~/.claude/CLAUDE.md && bash scripts/setup.sh"
 else
     ln -sf "$GLOBAL_CLAUDE_SOURCE" "$GLOBAL_CLAUDE_LINK"
     echo "✅ ~/.claude/CLAUDE.md → $GLOBAL_CLAUDE_SOURCE"
@@ -133,8 +132,7 @@ for agent_file in "$AGENT_DEFINITIONS_DIR"/*.md; do
             echo "✅ ~/.claude/agents/$agent_name symlink already correct"
         elif [ -e "$GLOBAL_AGENT_LINK" ] && [ ! -L "$GLOBAL_AGENT_LINK" ]; then
             echo "⚠️  ~/.claude/agents/$agent_name exists but is not a symlink — leaving it alone."
-            echo "   To replace with the canonical version:"
-            echo "     rm ~/.claude/agents/$agent_name && ln -s $agent_file $GLOBAL_AGENT_LINK"
+            echo "   To replace: rm ~/.claude/agents/$agent_name && bash scripts/setup.sh"
         else
             ln -sf "$agent_file" "$GLOBAL_AGENT_LINK"
             echo "✅ ~/.claude/agents/$agent_name → $agent_file"
