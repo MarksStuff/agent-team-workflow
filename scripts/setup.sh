@@ -98,18 +98,23 @@ else
     echo "✅ Pre-push hook already installed"
 fi
 
-# ── CLAUDE.md symlink (global master in agent-instructions/) ─────────────────
-CLAUDE_SOURCE="agent-instructions/CLAUDE.md"
-CLAUDE_LINK="CLAUDE.md"
+# ── Global ~/.claude/CLAUDE.md symlink ───────────────────────────────────────
+# Points to agent-instructions/CLAUDE.md in this repo so global Claude Code
+# guidelines are version-controlled here and applied to all sessions.
+GLOBAL_CLAUDE_SOURCE="$(pwd)/agent-instructions/CLAUDE.md"
+GLOBAL_CLAUDE_LINK="$HOME/.claude/CLAUDE.md"
 
-if [ -L "$CLAUDE_LINK" ] && [ "$(readlink "$CLAUDE_LINK")" = "$CLAUDE_SOURCE" ]; then
-    echo "✅ CLAUDE.md symlink already correct"
-elif [ -e "$CLAUDE_LINK" ] && [ ! -L "$CLAUDE_LINK" ]; then
-    echo "⚠️  CLAUDE.md exists but is not a symlink — leaving it alone."
-    echo "   To use the canonical version: rm CLAUDE.md && ln -s $CLAUDE_SOURCE $CLAUDE_LINK"
+mkdir -p "$HOME/.claude"
+
+if [ -L "$GLOBAL_CLAUDE_LINK" ] && [ "$(readlink "$GLOBAL_CLAUDE_LINK")" = "$GLOBAL_CLAUDE_SOURCE" ]; then
+    echo "✅ ~/.claude/CLAUDE.md symlink already correct"
+elif [ -e "$GLOBAL_CLAUDE_LINK" ] && [ ! -L "$GLOBAL_CLAUDE_LINK" ]; then
+    echo "⚠️  ~/.claude/CLAUDE.md exists but is not a symlink — leaving it alone."
+    echo "   To replace with the canonical version:"
+    echo "     rm ~/.claude/CLAUDE.md && ln -s $GLOBAL_CLAUDE_SOURCE $GLOBAL_CLAUDE_LINK"
 else
-    ln -sf "$CLAUDE_SOURCE" "$CLAUDE_LINK"
-    echo "✅ CLAUDE.md → $CLAUDE_SOURCE symlink created"
+    ln -sf "$GLOBAL_CLAUDE_SOURCE" "$GLOBAL_CLAUDE_LINK"
+    echo "✅ ~/.claude/CLAUDE.md → $GLOBAL_CLAUDE_SOURCE"
 fi
 
 # ── Git identity (Roxy's account) ────────────────────────────────────────────
