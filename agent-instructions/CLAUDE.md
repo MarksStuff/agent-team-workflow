@@ -35,8 +35,6 @@
   is to surface gaps and blockers, not to direct technical work.
 - **Self-organise against the task board.** Agents claim tasks based on
   their expertise. Nobody assigns work to anyone else.
-- **Architect and QA must both sign off** ("Architect: LGTM" and
-  "QA: LGTM") before an implementation sprint is declared complete.
 
 ---
 
