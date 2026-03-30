@@ -31,8 +31,6 @@
   ## [Role Name]
   <contribution, question, or response>
   ```
-- **Eng Manager facilitates — does not assign or implement.** The EM's job
-  is to surface gaps and blockers, not to direct technical work.
 - **Self-organise against the task board.** Agents claim tasks based on
   their expertise. Nobody assigns work to anyone else.
 
