@@ -7,9 +7,11 @@ Supports two operations:
                                feature description suitable for agent-design init
 """
 
+import json
 import os
 import re
 import subprocess
+import tempfile
 from pathlib import Path
 
 
@@ -85,8 +87,9 @@ Write only the feature description. No preamble, no explanation.
 def extract_feature_from_doc(doc_path: Path, section_header: str) -> str:
     """Use Claude to extract a concise feature description from a doc section.
 
-    Makes a single non-interactive claude --print call. Reads the Anthropic
-    API key from the ANTHROPIC_API_KEY environment variable or ~/.anthropic_api_key.
+    Makes a single non-interactive claude --print call to produce a polished
+    3–6 sentence description. If no ANTHROPIC_API_KEY is set, Claude will
+    authenticate via its own configured method (OAuth, apiKeyHelper, etc.).
 
     Args:
         doc_path: Path to the markdown specification document.
@@ -115,19 +118,28 @@ def extract_feature_from_doc(doc_path: Path, section_header: str) -> str:
             api_key = key_file.read_text().strip()
     if api_key:
         env["ANTHROPIC_API_KEY"] = api_key
-    # If no key found, proceed without setting it — claude may be authenticated
-    # via `claude login` (OAuth session in ~/.claude.json).
 
-    result = subprocess.run(
-        [
-            "claude",
-            "--print",
-            "--dangerously-skip-permissions",
-        ],
-        input=prompt.encode(),
-        capture_output=True,
-        env=env,
-    )
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as mcp_file:
+        json.dump({"mcpServers": {}}, mcp_file)
+        mcp_config_path = mcp_file.name
+
+    try:
+        result = subprocess.run(
+            [
+                "claude",
+                "--print",
+                "--dangerously-skip-permissions",
+                "--strict-mcp-config",
+                "--mcp-config",
+                mcp_config_path,
+                "--",
+                prompt,
+            ],
+            capture_output=True,
+            env=env,
+        )
+    finally:
+        os.unlink(mcp_config_path)
 
     if result.returncode != 0:
         stdout = result.stdout.decode().strip()

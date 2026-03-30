@@ -33,6 +33,16 @@ else
     echo "✅ claude CLI: $(claude --version 2>/dev/null | head -1)"
 fi
 
+# ── GitHub CLI (gh) ────────────────────────────────────────────────────────
+if ! command -v brew &>/dev/null; then
+    echo "⚠️  Homebrew not found. Please install Homebrew to install the gh CLI (https://brew.sh)"
+    echo "   PR integration will not work without the gh CLI."
+elif ! command -v gh &>/dev/null; then
+    echo "🔧 Installing gh CLI using Homebrew..."
+    brew install gh
+    echo "✅ gh CLI installed"
+fi
+
 if ! command -v gh &>/dev/null; then
     echo "⚠️  gh CLI not found — PR integration will not work."
     echo "   Install from: https://cli.github.com"

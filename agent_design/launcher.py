@@ -5,8 +5,10 @@ Two modes:
 - run_team(): interactive agent team session handed off to the terminal
 """
 
+import json
 import os
 import subprocess
+import tempfile
 from pathlib import Path
 
 from rich.console import Console
@@ -18,8 +20,8 @@ console = Console()
 def _get_api_key() -> str | None:
     """Get Anthropic API key from environment or ~/.anthropic_api_key.
 
-    Returns None if neither is present — callers should proceed without
-    setting the key and rely on claude's existing login session.
+    Returns None if neither is present — Claude will authenticate via its
+    own configured method (e.g. OAuth login session or apiKeyHelper script).
     """
     key = os.getenv("ANTHROPIC_API_KEY")
     if key:
@@ -43,7 +45,7 @@ def run_solo(
 
     Args:
         system_prompt: Agent identity/persona (passed via --append-system-prompt)
-        task_prompt: Stage-specific task instructions (sent via stdin)
+        task_prompt: Stage-specific task instructions
         worktree_path: Path to .agent-design/ worktree (claude's working dir)
         target_repo: Path to target repo (added as readable directory)
 
@@ -55,25 +57,32 @@ def run_solo(
     if api_key:
         env["ANTHROPIC_API_KEY"] = api_key
 
-    cmd = [
-        "claude",
-        "--print",
-        "--dangerously-skip-permissions",
-        "--strict-mcp-config",
-        "--mcp-config",
-        '{"mcpServers":{}}',
-        "--add-dir",
-        str(target_repo),
-        "--append-system-prompt",
-        system_prompt,
-    ]
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as mcp_file:
+        json.dump({"mcpServers": {}}, mcp_file)
+        mcp_config_path = mcp_file.name
 
-    result = subprocess.run(
-        cmd,
-        input=task_prompt.encode(),
-        cwd=str(worktree_path),
-        env=env,
-    )
+    try:
+        result = subprocess.run(
+            [
+                "claude",
+                "--print",
+                "--dangerously-skip-permissions",
+                "--strict-mcp-config",
+                "--mcp-config",
+                mcp_config_path,
+                "--add-dir",
+                str(target_repo),
+                "--append-system-prompt",
+                system_prompt,
+                "--",
+                task_prompt,
+            ],
+            cwd=str(worktree_path),
+            env=env,
+        )
+    finally:
+        os.unlink(mcp_config_path)
+
     return result.returncode
 
 
@@ -125,6 +134,56 @@ def run_team(
     result = subprocess.run(
         cmd,
         cwd=str(worktree_path),
+        env=env,
+    )
+    return result.returncode
+
+
+def run_team_in_repo(
+    repo_path: Path,
+    worktree_path: Path,
+    start_message: str,
+) -> int:
+    """Launch an interactive claude agent team session in the target repo root.
+
+    Like run_team() but the working directory is the target repo root so
+    agents can read and write source files directly. The worktree is added
+    as an extra directory so agents can read .agent-design/DESIGN.md.
+
+    Args:
+        repo_path: Path to target repo (claude's working dir)
+        worktree_path: Path to .agent-design/ worktree (added as readable dir)
+        start_message: Initial message to paste into claude to start the team
+
+    Returns:
+        Exit code from claude process
+    """
+    env = os.environ.copy()
+    api_key = _get_api_key()
+    if api_key:
+        env["ANTHROPIC_API_KEY"] = api_key
+    env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] = "1"
+
+    cmd = [
+        "claude",
+        "--dangerously-skip-permissions",
+        "--add-dir",
+        str(worktree_path),
+    ]
+
+    console.print(
+        Panel(
+            start_message,
+            title="[bold cyan]Paste this to start the implementation sprint[/bold cyan]",
+            subtitle="[dim]Copy the text above and paste it when Claude starts[/dim]",
+            border_style="cyan",
+        )
+    )
+    console.print()
+
+    result = subprocess.run(
+        cmd,
+        cwd=str(repo_path),
         env=env,
     )
     return result.returncode
