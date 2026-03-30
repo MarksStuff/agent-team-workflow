@@ -229,6 +229,18 @@ current design that has the problem.
 Your question for every component: "How would I write a unit test for this
 without touching the network, database, or filesystem?" If the answer requires
 significant refactoring, that's a design problem to raise now.
+
+
+## Communicating with teammates
+
+- Read .agent-design/DISCUSSION.md regularly for updates and questions from peers.
+- Post your own progress, questions, or blockers to .agent-design/DISCUSSION.md
+  using the format:
+  ```
+  ## [TDD Focused Engineer]
+
+  <your message>
+  ```
 """
 
 
@@ -354,9 +366,12 @@ make sure the team implements all of it and nothing drops. You do NOT:
 
 You DO:
 - Facilitate a brief planning session so the team self-organises
-- Monitor TASKS.md for unclaimed or stalled items
-- Surface gaps: "X has been unclaimed — who's taking it?"
-- Surface blockers: "Y has been in-progress a while — what's stuck?"
+- Monitor TASKS.md AND .agent-design/DISCUSSION.md for team status.
+  Your primary source of truth for progress and questions is these files.
+- Surface gaps: If TASKS.md has unclaimed items, or DISCUSSION.md shows a
+  clear need for intervention, ask: "X has been unclaimed — who's taking it?"
+- Surface blockers: If TASKS.md has stalled items, or DISCUSSION.md indicates
+  a blocker, ask: "Y has been in-progress a while — what's stuck?"
 - Facilitate the mandatory final review
 - Declare DONE only when Architect and QA have both said LGTM
 
@@ -408,6 +423,7 @@ You are implementing the design in .agent-design/DESIGN.md.
 Key paths:
 - Design spec:  .agent-design/DESIGN.md
 - Decisions:    .agent-design/DECISIONS.md
+- Discussion:   .agent-design/DISCUSSION.md (shared peer channel)
 - Task board:   TASKS.md  (create this in the repo root — the team fills it)
 
 Spawn your team of 4 with the prompts below, then run the three phases
@@ -441,6 +457,18 @@ At the final review:
   "§3.2 says X but the implementation does Y — this needs to change"
 - Sign off explicitly with "Architect: LGTM" only when fully satisfied
 - You have veto power on anything that materially contradicts the design
+
+
+## Communicating with teammates
+
+- Read .agent-design/DISCUSSION.md regularly for updates and questions from peers.
+- Post your own progress, questions, or blockers to .agent-design/DISCUSSION.md
+  using the format:
+  ```
+  ## [Architect]
+
+  <your message>
+  ```
 """,
     "Developer": """\
 You implement the bug fixes and changes specified in the design.
@@ -453,6 +481,18 @@ You implement the bug fixes and changes specified in the design.
 6. If a test seems wrong: raise it with TDD Engineer explicitly, don't skip it
 
 The design doc has the exact changes needed. Implement them precisely.
+
+
+## Communicating with teammates
+
+- Read .agent-design/DISCUSSION.md regularly for updates and questions from peers.
+- Post your own progress, questions, or blockers to .agent-design/DISCUSSION.md
+  using the format:
+  ```
+  ## [Developer]
+
+  <your message>
+  ```
 """,
     "QA Engineer": """\
 During implementation: answer questions about acceptance criteria and runbook
@@ -467,6 +507,18 @@ At the final review:
   be filled in now based on what we know?
 - Sign off explicitly with "QA: LGTM" only when satisfied that this
   implementation would actually deploy and operate correctly
+
+
+## Communicating with teammates
+
+- Read .agent-design/DISCUSSION.md regularly for updates and questions from peers.
+- Post your own progress, questions, or blockers to .agent-design/DISCUSSION.md
+  using the format:
+  ```
+  ## [QA Engineer]
+
+  <your message>
+  ```
 """,
     "TDD Focused Engineer": """\
 You go first. Before any implementation code is written:
