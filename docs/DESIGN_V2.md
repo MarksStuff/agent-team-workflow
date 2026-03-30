@@ -212,22 +212,25 @@ learned. Produces RETRO.md. May suggest prompt changes.
 Each agent is a Markdown file with YAML frontmatter. Claude Code loads these
 automatically — no Python plumbing required.
 
+Agents are **global** (`~/.claude/agents/`), not project-scoped. They travel
+with the engineer, not the repo. The same Architect, SRE, and TDD Engineer
+work across every project.
+
 ```
-agent-team-workflow/
-  .claude/
-    agents/
-      eng_manager.md
-      architect.md
-      developer.md
-      tdd_engineer.md
-      qa_engineer.md
-      sre.md
-      pm.md
-      security_engineer.md
-      database_architect.md
-      technical_writer.md
-      performance_engineer.md
-      retrospective_facilitator.md
+~/.claude/
+  agents/
+    eng_manager.md
+    architect.md
+    developer.md
+    tdd_engineer.md
+    qa_engineer.md
+    sre.md
+    pm.md
+    security_engineer.md
+    database_architect.md
+    technical_writer.md
+    performance_engineer.md
+    retrospective_facilitator.md
 ```
 
 ### Agent file format
@@ -255,16 +258,19 @@ by the Retrospective Facilitator and by human intervention events.
 
 ### Agent memory files
 
+Agent memory is **global and machine-local** (`~/.claude/agent-memory/`).
+Learnings about working style, preferred patterns, and past decisions travel
+with the engineer across all projects.
+
 ```
-agent-team-workflow/
-  .claude/
-    agent-memory/
-      architect.md        ← accumulated learnings across sessions
-      developer.md
-      tdd_engineer.md
-      qa_engineer.md
-      sre.md
-      ...
+~/.claude/
+  agent-memory/
+    architect.md        ← accumulated learnings across sessions and projects
+    developer.md
+    tdd_engineer.md
+    qa_engineer.md
+    sre.md
+    ...
 ```
 
 **Format:**
@@ -272,23 +278,49 @@ agent-team-workflow/
 ```markdown
 # Architect Memory
 
-## Team & Codebase Context
-- This codebase is a Swift news reader deploying to Proxmox LXC via Ansible
+## Working Style & Preferences
 - Mark prefers interface-first design: protocols defined before implementations
 - Tests live in separate targets, never mixed with production code
+- Prefer synchronous pipelines at small scale; async only when throughput demands it
 
-## Decisions & Preferences
-- 2026-03-22: Mark overrode recommendation for async queue in favour of
-  synchronous pipeline for Phase 5. Reason: simpler to operate at current scale.
-  Apply this preference to future infrastructure proposals.
+## Corrections & Overrides
+- 2026-03-22 [news_reader]: Mark overrode async queue recommendation for
+  synchronous pipeline. Reason: simpler to operate at current scale.
+- 2026-03-20 [news_reader]: Proposed Docker; Mark corrected to Ansible on Proxmox.
+  Check BASELINE.md and CLAUDE.md before proposing infrastructure changes.
 
 ## Lessons Learned
-- 2026-03-20: Attempted to use Docker for deployment; Mark corrected to Ansible.
-  Always check BASELINE.md for deployment approach before proposing alternatives.
+- Always read the project's CLAUDE.md before making deployment recommendations.
+  It contains the deployment approach, stack constraints, and key conventions.
 ```
 
-Memory files are committed to the repo so they persist across machines and
-are visible to the whole team.
+### Project-specific context: CLAUDE.md
+
+Global agent memory captures *engineer preferences*. Project-specific context
+lives where Claude Code already looks for it: **CLAUDE.md in the target repo**.
+
+Claude Code automatically loads CLAUDE.md files at session start — agents pick
+it up without any special plumbing. Each project maintains its own CLAUDE.md:
+
+```markdown
+# news_reader — Project Context for AI Agents
+
+## Deployment
+- Ansible on Proxmox LXC (NOT Docker, NOT Kubernetes)
+- Playbooks in `infrastructure/ansible/`
+
+## Testing
+- Swift: `swift test` from repo root
+- Ansible: `pytest infrastructure/ansible/tests/`
+- No real network calls in unit tests — use mocks
+
+## Code Conventions
+- All Swift types need a protocol for testability (dependency injection)
+- No direct pushes to main — always branch + PR
+```
+
+The Retrospective Facilitator can suggest CLAUDE.md additions when it spots
+project-specific patterns that kept tripping up agents.
 
 ---
 
@@ -410,7 +442,9 @@ improves the agent that made the mistake.
 
 ## The Retrospective
 
-A first-class command run at the end of every session:
+A first-class command run **once, at the very end of a complete feature** —
+after design is approved, implementation is done, and the PR is pushed. Not
+after every individual session.
 
 ```
 agent-design retro --repo-path ../news_reader
@@ -482,16 +516,26 @@ those mistakes don't recur.
 ## CLI Command Map (V2)
 
 ```
-agent-design init        -- extract feature, write BASELINE.md, initial DESIGN.md
-agent-design next        -- team design review + feedback incorporation
-agent-design impl        -- implementation sprint (planning → impl → review)
-agent-design retro       -- retrospective, update agent memories
-agent-design remember    -- manually route a correction to an agent's memory
-agent-design review-feedback --pr <url>  -- fetch PR comments, update memories
-agent-design status      -- current session state
-agent-design rollback    -- revert to a checkpoint
-agent-design close       -- clean up worktree and session
+agent-design init           -- extract feature, write BASELINE.md, initial DESIGN.md
+agent-design review         -- team design review (Stage 2: first collaborative pass)
+agent-design revise         -- incorporate PR feedback, update design (Stage 3+: iterate)
+agent-design impl           -- implementation sprint (planning → impl → final review)
+                               --test-cmd "pytest ..." to set the test gate
+agent-design retro          -- retrospective (run once, at end of feature)
+agent-design remember       -- manually route a human correction to an agent's memory
+                               --agent architect "prefer sync pipelines at small scale"
+agent-design review-feedback --pr <url>  -- fetch PR review comments, update memories
+agent-design status         -- current session state
+agent-design rollback       -- revert to a checkpoint
+agent-design close          -- clean up worktree and session
 ```
+
+### Why `review` and `revise` instead of `next`
+
+`next` is ambiguous — it doesn't tell you what's happening or what phase you're
+in. `review` clearly means "the team reviews the design". `revise` clearly means
+"the team incorporates feedback and updates the design". Both describe the action,
+not just the sequence.
 
 ---
 
@@ -522,34 +566,31 @@ It no longer manages:
 
 ## Open Questions
 
-**OQ-1: Agent file location — project vs. global**
-Option A: `.claude/agents/` in the `agent-team-workflow` repo (version-controlled,
-team-shared, checked into the repo alongside the CLI).
-Option B: `~/.claude/agents/` (global, available in any project).
-Leaning A for most agents (they're project-workflow-specific), with the option
-to promote stable agents to global later.
+**OQ-1: Agent file location — project vs. global** ✅ RESOLVED
+Agents are global: `~/.claude/agents/`. They travel with the engineer, not
+the repo. Same agents work across every project.
 
-**OQ-2: Memory file location — project vs. machine**
-Agent memories contain codebase-specific learnings that should persist across
-machines (e.g., "this project uses Ansible, not Docker"). Committing them to
-the repo solves persistence but exposes internal team context in a public repo.
-Options: commit to repo, store in `~/.claude/agent-memory/` (machine-local),
-or store in a private gist/repo.
+**OQ-2: Memory file location — project vs. machine** ✅ RESOLVED
+Memory is global and machine-local: `~/.claude/agent-memory/`. Captures
+engineer preferences and cross-project learnings.
+Project-specific context lives in the target repo's `CLAUDE.md` — Claude Code
+loads it automatically, no plumbing required. The Retrospective Facilitator
+can suggest CLAUDE.md additions for recurring project-specific corrections.
 
-**OQ-3: Retrospective timing**
-Run retro automatically after every `impl` session, or as an explicit command
-the human invokes? Automatic is better for building the habit; explicit gives
-more control. Proposal: run automatically but with `--skip-retro` flag to opt out.
+**OQ-3: Retrospective timing** ✅ RESOLVED
+Run once, explicitly, at the very end of a complete feature — after design
+is approved, impl is done, and the PR is pushed. Not after every session.
 
-**OQ-4: Hook implementation**
-The `task_completed.sh` hook needs to know the repo path and which test suite
-to run. These are session-specific. Options: pass via environment variables
-set by the CLI before launching Claude, or read from a config file in the worktree.
+**OQ-4: Hook implementation** ✅ RESOLVED
+Pass repo path and test command as CLI parameters when invoking `agent-design impl`.
+Example: `agent-design impl --repo-path ../news_reader --test-cmd "pytest infrastructure/ansible/tests/"`.
+The CLI sets these as environment variables before launching Claude so hooks
+can read them.
 
-**OQ-5: EM decision logging**
-When the EM decides to spawn a specialist mid-session, that decision should be
-visible and reviewable. Proposal: EM writes a brief rationale to TASKS.md when
-spawning additional agents ("Spawning SRE: deployment procedure review needed").
+**OQ-5: EM decision logging** ✅ RESOLVED
+EM writes a brief rationale to TASKS.md whenever it spawns an additional agent.
+Example: `| Spawned SRE | Eng Manager | ✅ | deployment procedure review needed |`
+This creates a useful audit trail for the Retrospective Facilitator.
 
 ---
 
