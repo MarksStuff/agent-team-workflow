@@ -33,7 +33,7 @@ def _get_api_key() -> str | None:
 
 
 def run_solo(
-    system_prompt: str,
+    agent_name: str,
     task_prompt: str,
     worktree_path: Path,
     target_repo: Path,
@@ -44,7 +44,8 @@ def run_solo(
     Claude writes directly to files in worktree_path.
 
     Args:
-        system_prompt: Agent identity/persona (passed via --append-system-prompt)
+        agent_name: Name of the agent to run (e.g., 'architect'). Claude Code
+                    will load its definition from ~/.claude/agents/{agent_name}.md
         task_prompt: Stage-specific task instructions
         worktree_path: Path to .agent-design/ worktree (claude's working dir)
         target_repo: Path to target repo (added as readable directory)
@@ -72,8 +73,8 @@ def run_solo(
                 mcp_config_path,
                 "--add-dir",
                 str(target_repo),
-                "--append-system-prompt",
-                system_prompt,
+                "--agent",  # Use --agent flag here
+                agent_name,
                 "--",
                 task_prompt,
             ],
