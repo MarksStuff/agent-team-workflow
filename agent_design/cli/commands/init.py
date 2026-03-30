@@ -9,7 +9,7 @@ from rich.panel import Panel
 from agent_design.feature_extractor import extract_feature_from_doc
 from agent_design.git_ops import checkpoint, detect_existing_worktree, setup_worktree
 from agent_design.launcher import run_solo
-from agent_design.prompts import AGENT_ARCHITECT, STAGE_0_BASELINE, STAGE_1_INITIAL_DRAFT
+from agent_design.prompts import STAGE_0_BASELINE, STAGE_1_INITIAL_DRAFT
 from agent_design.state import RoundState, generate_slug, load_round_state, save_round_state
 
 console = Console()
@@ -114,7 +114,7 @@ def init(
     # ── Stage 0: Architect writes BASELINE.md ────────────────────────────────
     console.print(Panel("Stage 0 — Architect: codebase analysis", border_style="blue"))
     rc = run_solo(
-        system_prompt=AGENT_ARCHITECT,
+        agent_name="architect",
         task_prompt=STAGE_0_BASELINE.format(
             target_repo=repo_path,
             feature_request=feature_request,
@@ -135,7 +135,7 @@ def init(
     # ── Stage 1: Architect writes DESIGN.md v1 ───────────────────────────────
     console.print(Panel("Stage 1 — Architect: initial design draft", border_style="blue"))
     rc = run_solo(
-        system_prompt=AGENT_ARCHITECT,
+        agent_name="architect",
         task_prompt=STAGE_1_INITIAL_DRAFT.format(feature_request=feature_request),
         worktree_path=worktree_path,
         target_repo=repo_path,
