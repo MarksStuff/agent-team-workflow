@@ -98,6 +98,25 @@ else
     echo "✅ Pre-push hook already installed"
 fi
 
+# ── Global ~/.claude/CLAUDE.md symlink ───────────────────────────────────────
+# Points to agent-instructions/CLAUDE.md in this repo so global Claude Code
+# guidelines are version-controlled here and applied to all sessions.
+GLOBAL_CLAUDE_SOURCE="$(pwd)/agent-instructions/CLAUDE.md"
+GLOBAL_CLAUDE_LINK="$HOME/.claude/CLAUDE.md"
+
+mkdir -p "$HOME/.claude"
+
+if [ -L "$GLOBAL_CLAUDE_LINK" ] && [ "$(readlink "$GLOBAL_CLAUDE_LINK")" = "$GLOBAL_CLAUDE_SOURCE" ]; then
+    echo "✅ ~/.claude/CLAUDE.md symlink already correct"
+elif [ -e "$GLOBAL_CLAUDE_LINK" ] && [ ! -L "$GLOBAL_CLAUDE_LINK" ]; then
+    echo "⚠️  ~/.claude/CLAUDE.md exists but is not a symlink — leaving it alone."
+    echo "   To replace with the canonical version:"
+    echo "     rm ~/.claude/CLAUDE.md && ln -s $GLOBAL_CLAUDE_SOURCE $GLOBAL_CLAUDE_LINK"
+else
+    ln -sf "$GLOBAL_CLAUDE_SOURCE" "$GLOBAL_CLAUDE_LINK"
+    echo "✅ ~/.claude/CLAUDE.md → $GLOBAL_CLAUDE_SOURCE"
+fi
+
 # ── Git identity (Roxy's account) ────────────────────────────────────────────
 ROXY_EMAIL="269813048+roxy-mstriebeck@users.noreply.github.com"
 CURRENT_EMAIL=$(git config user.email 2>/dev/null || echo "")
