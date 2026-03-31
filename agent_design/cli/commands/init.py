@@ -29,11 +29,20 @@ console = Console()
     default=None,
     help="Heading text of the section in --doc to extract (case-sensitive, no # prefix).",
 )
+@click.option(
+    "--design-doc",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to a completed DESIGN.md. Skips stages 0+1 and bootstraps the "
+    "worktree directly from this file. Use when you already have an approved "
+    "design and want to go straight to impl.",
+)
 def init(
     repo_path: Path,
     feature_request: str | None,
     doc: Path | None,
     section: str | None,
+    design_doc: Path | None,
 ) -> None:
     """Initialize a new agent design session.
 
@@ -46,6 +55,11 @@ def init(
       agent-design init ~/repo --doc docs/pipeline-architecture.md \\
           --section "Phase 6 — Admin & Re-run Tooling"
 
+    Or bootstrap directly from an existing completed design doc (skips stages 0+1):
+
+      agent-design init ~/repo "Implement V2 architecture" \\
+          --design-doc docs/DESIGN_V2.md
+
     The --doc/--section form makes one Claude call to extract a concise feature
     description from the document section before starting the session.
     """
@@ -56,6 +70,8 @@ def init(
         raise click.UsageError("Provide either a feature_request argument OR --doc/--section, not both.")
     if using_doc and not (doc and section):
         raise click.UsageError("--doc and --section must be used together.")
+    if design_doc and using_doc:
+        raise click.UsageError("--design-doc cannot be combined with --doc/--section.")
     if not feature_request and not using_doc:
         raise click.UsageError("Provide a feature_request argument or use --doc + --section.")
 
@@ -110,6 +126,28 @@ def init(
     save_round_state(worktree_path, state)
     checkpoint(worktree_path, "init: session created", "chk-init")
     console.print("[green]✓[/green] Checkpoint: chk-init\n")
+
+    # ── Fast-path: bootstrap from existing design doc ────────────────────────
+    if design_doc is not None:
+        design_doc = design_doc.resolve()
+        (worktree_path / "DESIGN.md").write_text(design_doc.read_text())
+        (worktree_path / "DISCUSSION.md").write_text("# Design Discussion\n")
+        (worktree_path / "DECISIONS.md").write_text("# Design Decisions\n")
+        state.phase = "open_discussion"
+        state.completed.extend(["baseline", "initial_draft"])
+        save_round_state(worktree_path, state)
+        checkpoint(worktree_path, "init: bootstrapped from existing design doc", "chk-initial-draft")
+        console.print(f"[green]✓[/green] DESIGN.md bootstrapped from {design_doc.name}")
+        console.print(
+            Panel(
+                f"Worktree ready with your existing design doc.\n\n"
+                f"Run the implementation sprint:\n\n"
+                f"  [bold cyan]agent-design impl --repo-path {repo_path}[/bold cyan]",
+                title="[green]✓ Bootstrap complete[/green]",
+                border_style="green",
+            )
+        )
+        return
 
     # ── Stage 0: Architect writes BASELINE.md ────────────────────────────────
     console.print(Panel("Stage 0 — Architect: codebase analysis", border_style="blue"))

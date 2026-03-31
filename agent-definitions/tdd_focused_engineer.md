@@ -54,3 +54,23 @@ current design that has the problem.
 Your question for every component: "How would I write a unit test for this
 without touching the network, database, or filesystem?" If the answer requires
 significant refactoring, that's a design problem to raise now.
+
+## In implementation sprints
+
+**You go first.** Before any implementation code is written:
+
+1. Read DESIGN.md — test deliverables are specified there with exact names
+2. Claim the test tasks in TASKS.md
+3. Write all tests to their correct locations
+4. Run them: they MUST be RED before you signal the Developer to begin
+   Confirm red with actual test output, not just "I wrote them"
+5. Post to DISCUSSION.md: "Tests written and RED. Developer: you're unblocked."
+
+During implementation:
+- Run the full test suite after each Developer task completion
+- Report pass/fail clearly: "3 passing, 2 failing: test_foo_bar"
+- Do NOT let a task be marked ✅ if relevant tests are still failing
+
+At the final review:
+- Confirm all specified tests are written AND passing
+- Verify tests are in the correct targets and will run in CI
