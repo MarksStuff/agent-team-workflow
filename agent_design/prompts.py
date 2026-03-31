@@ -64,49 +64,29 @@ Write all three files now. Do not ask for confirmation.
 # =============================================================================
 
 _STAGE_2_TASK = """\
-Task: design review for the feature described below.
-
 Feature: {feature_request}
 
-Available specialists: architect, developer, qa_engineer, tdd_focused_engineer
-
-Spawn the specialists most relevant to this feature.
-
-Files in this directory:
-- BASELINE.md — codebase analysis (already written)
-- DESIGN.md — initial draft to review and refine
-- DISCUSSION.md — shared thread; all agents append entries here tagged with
-  their role: ## [Role Name]
-- DECISIONS.md — append resolved disagreements here using the format:
-    ## Decision: <title>
-    **Disagreement:** ...
-    **Positions:** ...
-    **Resolution:** ...
-
-Run a free-form design discussion. Converge on DESIGN.md and DECISIONS.md.
-If the team cannot reach agreement on a point, record the deadlock in
-DECISIONS.md and flag it for human review — do not force a false consensus.
-"""
-
-_STAGE_3_TASK = """\
-Task: incorporate human feedback (round {round_num})
-
-Human feedback is in: feedback/human-round-{round_num}.md
-
-Available specialists: architect, developer, qa_engineer, tdd_focused_engineer
-
-Spawn the specialists most relevant to this task.
+Task: run a design review for the above feature.
 
 Files in this directory:
 - BASELINE.md — codebase analysis
-- DESIGN.md — current design (update as consensus forms)
-- DISCUSSION.md — prior discussion; append new entries with a separator line
-- DECISIONS.md — prior decisions; append new resolutions
+- DESIGN.md — initial draft to review and refine
+- DISCUSSION.md — shared discussion thread
+- DECISIONS.md — resolved decisions and deadlocks
+"""
 
-Surface the feedback as a ## [Human] entry in DISCUSSION.md, facilitate
-discussion, and update DESIGN.md with the agreed changes.
-If any feedback point leads to unresolvable disagreement, record it as a
-deadlock in DECISIONS.md for human review.
+_STAGE_3_TASK = """\
+Feature: {feature_request}
+
+Task: incorporate human feedback (round {round_num}).
+
+Human feedback is in: feedback/human-round-{round_num}.md
+
+Files in this directory:
+- BASELINE.md — codebase analysis
+- DESIGN.md — current design
+- DISCUSSION.md — prior discussion
+- DECISIONS.md — prior decisions
 """
 
 _IMPL_START_MESSAGE = """\
@@ -114,15 +94,8 @@ Feature: {feature_request}
 
 Task: implement the above feature using the design in .agent-design/DESIGN.md
 
-The design document may contain broader context or future phases. Implement
-ONLY the feature listed above — nothing more.
-
-Available specialists: architect, developer, qa_engineer, tdd_focused_engineer
-
-Spawn who you need. Create TASKS.md. Run three phases:
-1. Sprint planning — self-assign tasks scoped to the feature above
-2. Implementation — TDD first, tests gate completion
-3. Final review — Architect + QA sign off before declaring done
+The design document may contain broader context or future phases — implement
+ONLY the feature listed above.
 """
 
 _IMPL_RESUME_MESSAGE = """\
@@ -130,14 +103,8 @@ Feature: {feature_request}
 
 Task: resume the implementation sprint for the above feature.
 
-Review .agent-design/DESIGN.md for any new changes or clarifications.
-Review TASKS.md for existing tasks, their status, and any new tasks.
-Review .agent-design/DISCUSSION.md for any pending discussions or blockers.
-Continue implementation scoped to the feature above.
-
-Available specialists: architect, developer, qa_engineer, tdd_focused_engineer
-
-Spawn who you need. Continue the three phases outlined above.
+The design document may contain broader context or future phases — stay
+scoped to the feature listed above.
 """
 
 
