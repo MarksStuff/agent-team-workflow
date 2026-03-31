@@ -147,12 +147,14 @@ def setup_worktree(repo_path: Path, slug: str) -> Path:
         error_msg="Failed to remove files from staging",
     )
 
-    # Create initial empty commit
+    # Create initial empty commit — --no-verify skips pre-commit hooks,
+    # which don't apply to this internal bookkeeping commit on an orphan branch.
     _run_git_in_target(
         [
             *_nosign_flags(repo_path),
             "commit",
             "--allow-empty",
+            "--no-verify",
             "-m",
             f"init: agent design session — {slug}",
         ],
@@ -238,9 +240,10 @@ def checkpoint(worktree_path: Path, message: str, tag: str) -> None:
         error_msg="Failed to stage changes for checkpoint",
     )
 
-    # Commit
+    # Commit — --no-verify: checkpoint commits are internal bookkeeping,
+    # not subject to project pre-commit hooks.
     _run_git_in_target(
-        ["commit", "-m", message],
+        ["commit", "--no-verify", "-m", message],
         cwd=worktree_path,
         env=repo_env,
         error_msg="Failed to commit checkpoint",
