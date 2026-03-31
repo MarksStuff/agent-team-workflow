@@ -240,10 +240,10 @@ def checkpoint(worktree_path: Path, message: str, tag: str) -> None:
         error_msg="Failed to stage changes for checkpoint",
     )
 
-    # Commit — --no-verify: checkpoint commits are internal bookkeeping,
-    # not subject to project pre-commit hooks.
+    # Commit — --no-verify skips pre-commit hooks; _nosign_flags disables
+    # GPG/ac-sign signing. Both are needed on Apple work machines.
     _run_git_in_target(
-        ["commit", "--no-verify", "-m", message],
+        [*_nosign_flags(worktree_path), "commit", "--no-verify", "-m", message],
         cwd=worktree_path,
         env=repo_env,
         error_msg="Failed to commit checkpoint",
