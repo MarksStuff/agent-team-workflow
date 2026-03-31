@@ -110,24 +110,30 @@ deadlock in DECISIONS.md for human review.
 """
 
 _IMPL_START_MESSAGE = """\
-Task: implement the design in .agent-design/DESIGN.md
+Feature: {feature_request}
+
+Task: implement the above feature using the design in .agent-design/DESIGN.md
+
+The design document may contain broader context or future phases. Implement
+ONLY the feature listed above — nothing more.
 
 Available specialists: architect, developer, qa_engineer, tdd_focused_engineer
 
 Spawn who you need. Create TASKS.md. Run three phases:
-1. Sprint planning — self-assign tasks
+1. Sprint planning — self-assign tasks scoped to the feature above
 2. Implementation — TDD first, tests gate completion
 3. Final review — Architect + QA sign off before declaring done
 """
 
 _IMPL_RESUME_MESSAGE = """\
-Task: resume existing implementation sprint / fix round
+Feature: {feature_request}
+
+Task: resume the implementation sprint for the above feature.
 
 Review .agent-design/DESIGN.md for any new changes or clarifications.
 Review TASKS.md for existing tasks, their status, and any new tasks.
 Review .agent-design/DISCUSSION.md for any pending discussions or blockers.
-Continue implementation, incorporating any new design changes and resolving
-existing issues. The goal is still to implement everything in DESIGN.md.
+Continue implementation scoped to the feature above.
 
 Available specialists: architect, developer, qa_engineer, tdd_focused_engineer
 
@@ -135,11 +141,12 @@ Spawn who you need. Continue the three phases outlined above.
 """
 
 
-def build_impl_start(is_resume: bool = False) -> str:
+def build_impl_start(feature_request: str, is_resume: bool = False) -> str:
     """Build the Eng Manager start message for the implementation sprint."""
     # EM is assumed to be running the session; its prompt is loaded automatically
     # by Claude Code from ~/.claude/agents/eng_manager.md
-    return _IMPL_RESUME_MESSAGE.strip() if is_resume else _IMPL_START_MESSAGE.strip()
+    template = _IMPL_RESUME_MESSAGE if is_resume else _IMPL_START_MESSAGE
+    return template.format(feature_request=feature_request).strip()
 
 
 def build_review_start(feature_request: str) -> str:

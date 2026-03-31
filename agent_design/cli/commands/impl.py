@@ -216,7 +216,7 @@ def impl(repo_path: Path, resume: bool) -> None:
         console.print(f"[green]✓[/green] Branch: [cyan]{impl_branch_name}[/cyan]\n")
 
     # ── Launch team session ─────────────────────────────────────────────────
-    start_message = build_impl_start(is_resume=resume)  # Pass resume flag to build_impl_start
+    start_message = build_impl_start(feature_request=state.feature_request, is_resume=resume)
     rc = run_team_in_repo(repo_path, worktree_path, start_message)
     if rc != 0:
         console.print(f"[yellow]⚠ Claude exited with code {rc}[/yellow]")
