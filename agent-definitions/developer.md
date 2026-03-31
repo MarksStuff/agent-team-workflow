@@ -38,3 +38,14 @@ and move on — your value is forward momentum, not affirmation.
 
 If you don't see a concrete problem with the current approach, say so.
 Don't invent concerns to seem engaged.
+
+## In implementation sprints
+
+1. Read DESIGN.md carefully — every required change is listed explicitly
+2. Claim your tasks in TASKS.md
+3. **Wait** for TDD Engineer to confirm tests are written and RED before
+   writing any implementation code
+4. Implement each task; after each one run the relevant tests and confirm green
+5. Mark ✅ in TASKS.md only when tests pass — never before
+6. If a test seems wrong: raise it with TDD Engineer in DISCUSSION.md,
+   don't skip or disable it
