@@ -9,6 +9,9 @@ Structure:
               spawn prompts for each teammate.
 """
 
+import re
+from pathlib import Path
+
 # =============================================================================
 # Stage task prompts (solo sessions — Architect running alone)
 # No agent identity here. That goes in architect.md via --append-system-prompt.
@@ -68,6 +71,10 @@ Feature: {feature_request}
 
 Task: run a design review for the above feature.
 
+Available specialists: {available_specialists}
+
+Spawn the specialists most relevant to this feature.
+
 Files in this directory:
 - BASELINE.md — codebase analysis
 - DESIGN.md — initial draft to review and refine
@@ -79,6 +86,8 @@ _STAGE_3_TASK = """\
 Feature: {feature_request}
 
 Task: incorporate human feedback (round {round_num}).
+
+Available specialists: {available_specialists}
 
 Human feedback is in: feedback/human-round-{round_num}.md
 
@@ -94,6 +103,8 @@ Feature: {feature_request}
 
 Task: implement the above feature using the design in .agent-design/DESIGN.md
 
+Available specialists: {available_specialists}
+
 The design document may contain broader context or future phases — implement
 ONLY the feature listed above.
 """
@@ -103,24 +114,73 @@ Feature: {feature_request}
 
 Task: resume the implementation sprint for the above feature.
 
+Available specialists: {available_specialists}
+
 The design document may contain broader context or future phases — stay
 scoped to the feature listed above.
 """
 
 
-def build_impl_start(feature_request: str, is_resume: bool = False) -> str:
+def _parse_frontmatter_name(content: str) -> str | None:
+    """Extract the name field from YAML frontmatter delimited by ---.
+
+    Returns the name value as a string, or None if not found.
+    """
+    match = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
+    if not match:
+        return None
+    frontmatter = match.group(1)
+    name_match = re.search(r"^name:\s+(\S+)", frontmatter, re.MULTILINE)
+    return name_match.group(1) if name_match else None
+
+
+def get_available_specialists(agents_dir: Path | None = None) -> str:
+    """Discover available specialist agents from ~/.claude/agents/.
+
+    Reads the agents directory and returns a comma-separated list of agent
+    names, excluding the eng_manager (who is already running the session).
+
+    Args:
+        agents_dir: Override the agents directory (for testing). Defaults to
+                    ~/.claude/agents/.
+
+    Returns:
+        Comma-separated agent names, or an empty string if none found.
+    """
+    if agents_dir is None:
+        agents_dir = Path.home() / ".claude" / "agents"
+    if not agents_dir.exists():
+        return ""
+
+    names = []
+    for path in sorted(agents_dir.glob("*.md")):
+        if path.stem == "eng_manager":
+            continue
+        content = path.read_text()
+        name = _parse_frontmatter_name(content)
+        names.append(name if name else path.stem)
+
+    return ", ".join(names)
+
+
+def build_impl_start(feature_request: str, is_resume: bool = False, available_specialists: str | None = None) -> str:
     """Build the Eng Manager start message for the implementation sprint."""
     # EM is assumed to be running the session; its prompt is loaded automatically
     # by Claude Code from ~/.claude/agents/eng_manager.md
     template = _IMPL_RESUME_MESSAGE if is_resume else _IMPL_START_MESSAGE
-    return template.format(feature_request=feature_request).strip()
+    specialists = available_specialists if available_specialists is not None else get_available_specialists()
+    return template.format(feature_request=feature_request, available_specialists=specialists).strip()
 
 
-def build_review_start(feature_request: str) -> str:
+def build_review_start(feature_request: str, available_specialists: str | None = None) -> str:
     """Build the Eng Manager start message for stage 2 (design review)."""
-    return _STAGE_2_TASK.format(feature_request=feature_request).strip()
+    specialists = available_specialists if available_specialists is not None else get_available_specialists()
+    return _STAGE_2_TASK.format(feature_request=feature_request, available_specialists=specialists).strip()
 
 
-def build_feedback_start(round_num: int) -> str:
+def build_feedback_start(round_num: int, feature_request: str = "", available_specialists: str | None = None) -> str:
     """Build the Eng Manager start message for stage 3+ (feedback integration)."""
-    return _STAGE_3_TASK.format(round_num=round_num).strip()
+    specialists = available_specialists if available_specialists is not None else get_available_specialists()
+    return _STAGE_3_TASK.format(
+        round_num=round_num, feature_request=feature_request, available_specialists=specialists
+    ).strip()
