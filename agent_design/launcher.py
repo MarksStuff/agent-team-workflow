@@ -118,6 +118,8 @@ def run_team(
     cmd = [
         "claude",
         "--dangerously-skip-permissions",
+        "--agent",
+        "eng_manager",
         "--add-dir",
         str(target_repo),
     ]
@@ -168,6 +170,8 @@ def run_team_in_repo(
     cmd = [
         "claude",
         "--dangerously-skip-permissions",
+        "--agent",
+        "eng_manager",
         "--add-dir",
         str(worktree_path),
     ]
