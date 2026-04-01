@@ -338,7 +338,7 @@ def next_round(repo_path: Path) -> None:
             console.print("[dim]  Fix: set pr_url in ROUND_STATE.json, or write the file manually[/dim]")
             raise click.Abort()
 
-        start_message = build_feedback_start(round_num)
+        start_message = build_feedback_start(round_num, feature_request=state.feature_request)
         rc = run_team(worktree_path, Path(state.target_repo), start_message)
         if rc != 0:
             console.print(f"[yellow]⚠ Claude exited with code {rc}[/yellow]")
