@@ -14,7 +14,7 @@ from agent_design.git_ops import (
     create_impl_branch,
     detect_existing_worktree,
 )
-from agent_design.launcher import run_team_in_repo
+from agent_design.launcher import discover_agents, run_team_in_repo
 from agent_design.prompts import build_impl_start
 from agent_design.state import load_round_state
 
@@ -216,7 +216,10 @@ def impl(repo_path: Path, resume: bool) -> None:
         console.print(f"[green]✓[/green] Branch: [cyan]{impl_branch_name}[/cyan]\n")
 
     # ── Launch team session ─────────────────────────────────────────────────
-    start_message = build_impl_start(feature_request=state.feature_request, is_resume=resume)
+    specialists = discover_agents()
+    start_message = build_impl_start(
+        feature_request=state.feature_request, available_specialists=specialists, is_resume=resume
+    )
     rc = run_team_in_repo(repo_path, worktree_path, start_message)
     if rc != 0:
         console.print(f"[yellow]⚠ Claude exited with code {rc}[/yellow]")

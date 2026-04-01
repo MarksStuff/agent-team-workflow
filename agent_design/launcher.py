@@ -14,7 +14,22 @@ from pathlib import Path
 from rich.console import Console
 from rich.panel import Panel
 
+_AGENTS_DIR = Path.home() / ".claude" / "agents"
+_EM_AGENT = "eng_manager"
+
 console = Console()
+
+
+def discover_agents() -> list[str]:
+    """Return available specialist agent names from ~/.claude/agents/.
+
+    Reads the agents directory and returns stem names of all .md files,
+    excluding the eng_manager (which is already the session lead).
+    Returns an empty list if the directory doesn't exist.
+    """
+    if not _AGENTS_DIR.is_dir():
+        return []
+    return sorted(p.stem for p in _AGENTS_DIR.glob("*.md") if p.stem != _EM_AGENT)
 
 
 def _get_api_key() -> str | None:

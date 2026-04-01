@@ -68,6 +68,11 @@ Feature: {feature_request}
 
 Task: run a design review for the above feature.
 
+Available specialists: {specialists}
+
+Spawn the specialists most relevant to this feature. Do not spawn all of them —
+choose based on what the design review actually needs.
+
 Files in this directory:
 - BASELINE.md — codebase analysis
 - DESIGN.md — initial draft to review and refine
@@ -79,6 +84,10 @@ _STAGE_3_TASK = """\
 Feature: {feature_request}
 
 Task: incorporate human feedback (round {round_num}).
+
+Available specialists: {specialists}
+
+Spawn the specialists most relevant to addressing this feedback.
 
 Human feedback is in: feedback/human-round-{round_num}.md
 
@@ -94,8 +103,10 @@ Feature: {feature_request}
 
 Task: implement the above feature using the design in .agent-design/DESIGN.md
 
-The design document may contain broader context or future phases — implement
-ONLY the feature listed above.
+Available specialists: {specialists}
+
+Spawn who you need. The design document may contain broader context or future
+phases — implement ONLY the feature listed above.
 """
 
 _IMPL_RESUME_MESSAGE = """\
@@ -103,24 +114,33 @@ Feature: {feature_request}
 
 Task: resume the implementation sprint for the above feature.
 
-The design document may contain broader context or future phases — stay
-scoped to the feature listed above.
+Available specialists: {specialists}
+
+Spawn any additional specialists you need. The design document may contain
+broader context or future phases — stay scoped to the feature listed above.
 """
 
 
-def build_impl_start(feature_request: str, is_resume: bool = False) -> str:
+def build_impl_start(
+    feature_request: str,
+    available_specialists: list[str],
+    is_resume: bool = False,
+) -> str:
     """Build the Eng Manager start message for the implementation sprint."""
     # EM is assumed to be running the session; its prompt is loaded automatically
     # by Claude Code from ~/.claude/agents/eng_manager.md
     template = _IMPL_RESUME_MESSAGE if is_resume else _IMPL_START_MESSAGE
-    return template.format(feature_request=feature_request).strip()
+    specialists = ", ".join(available_specialists) if available_specialists else "none discovered"
+    return template.format(feature_request=feature_request, specialists=specialists).strip()
 
 
-def build_review_start(feature_request: str) -> str:
+def build_review_start(feature_request: str, available_specialists: list[str]) -> str:
     """Build the Eng Manager start message for stage 2 (design review)."""
-    return _STAGE_2_TASK.format(feature_request=feature_request).strip()
+    specialists = ", ".join(available_specialists) if available_specialists else "none discovered"
+    return _STAGE_2_TASK.format(feature_request=feature_request, specialists=specialists).strip()
 
 
-def build_feedback_start(round_num: int) -> str:
+def build_feedback_start(round_num: int, available_specialists: list[str], feature_request: str = "") -> str:
     """Build the Eng Manager start message for stage 3+ (feedback integration)."""
-    return _STAGE_3_TASK.format(round_num=round_num).strip()
+    specialists = ", ".join(available_specialists) if available_specialists else "none discovered"
+    return _STAGE_3_TASK.format(round_num=round_num, specialists=specialists, feature_request=feature_request).strip()

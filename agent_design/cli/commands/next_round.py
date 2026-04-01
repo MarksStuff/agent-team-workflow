@@ -12,7 +12,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 from agent_design.git_ops import _nosign_flags, _run_git_in_target, checkpoint, detect_existing_worktree
-from agent_design.launcher import run_team
+from agent_design.launcher import discover_agents, run_team
 from agent_design.prompts import build_feedback_start, build_review_start
 from agent_design.state import RoundState, load_round_state, save_round_state
 
@@ -291,7 +291,8 @@ def next_round(repo_path: Path) -> None:
 
     if state.phase == "open_discussion":
         console.print(Panel("Stage 2 — Agent team: design review", border_style="magenta"))
-        start_message = build_review_start(state.feature_request)
+        specialists = discover_agents()
+        start_message = build_review_start(state.feature_request, specialists)
         rc = run_team(worktree_path, Path(state.target_repo), start_message)
         if rc != 0:
             console.print(f"[yellow]⚠ Claude exited with code {rc}[/yellow]")
@@ -338,7 +339,7 @@ def next_round(repo_path: Path) -> None:
             console.print("[dim]  Fix: set pr_url in ROUND_STATE.json, or write the file manually[/dim]")
             raise click.Abort()
 
-        start_message = build_feedback_start(round_num)
+        start_message = build_feedback_start(round_num, discover_agents(), state.feature_request)
         rc = run_team(worktree_path, Path(state.target_repo), start_message)
         if rc != 0:
             console.print(f"[yellow]⚠ Claude exited with code {rc}[/yellow]")
