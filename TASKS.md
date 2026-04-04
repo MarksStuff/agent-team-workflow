@@ -1,7 +1,10 @@
 | Task | Owner | Status | Notes |
 |---|---|---|---|
-| Add `_parse_frontmatter_name()` helper + `get_available_specialists()` to `prompts.py` | Eng Manager | ✅ done | |
-| Update start-prompt templates + `build_*` functions to include available specialists | Eng Manager | ✅ done | Fixed build_feedback_start feature_request bug too |
-| Update callers of `build_feedback_start` in `next_round.py` and `feedback.py` | Eng Manager | ✅ done | |
-| Write tests for `get_available_specialists()` and `_parse_frontmatter_name()` | Eng Manager | ✅ done | tests/test_prompts.py — 19 tests |
-| Final review — walk DESIGN.md §Phase 2 against implementation | Architect + QA | ⬜ unclaimed | Architect + QA both sign off |
+| Write tests verifying each required addition is present in agent-definitions/ files | TDD Focused Engineer | ✅ done | Must be RED before Developer starts edits |
+| Add `## Your memory file` block to all 5 agent definition files | Developer | ✅ done | |
+| Add design-session guidance + DISCUSSION.md reminder + missing-agent escalation to eng_manager.md | Developer | ✅ done | |
+| Add CLAUDE.md/BASELINE.md reading reminder + design-drift posting instruction to architect.md | Developer | ✅ done | |
+| Add design-gap protocol to developer.md | Developer | ✅ done | |
+| Add test-derivation guidance (when DESIGN.md silent on test names) to tdd_focused_engineer.md | Developer | ✅ done | |
+| Add `## In design sessions` section to qa_engineer.md | Developer | ✅ done | |
+| Final review — verify all § Agent Prompt Assessment additions are present, complete, and faithful to DESIGN.md | Architect + QA | ✅ done | Architect: LGTM. QA: LGTM. |

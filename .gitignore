@@ -14,3 +14,5 @@ build/
 
 # Agent design worktree
 .agent-design/
+
+.DS_STORE
