@@ -619,3 +619,73 @@ class TestRetroAgentDesignDirEmpty:
             result = runner.invoke(retro_cmd, ["--repo-path", str(tmp_path)])
 
         assert result.exit_code != 0
+
+
+# ---------------------------------------------------------------------------
+# --observation option
+# ---------------------------------------------------------------------------
+
+
+class TestRetroObservationOption:
+    """--observation passes human input to build_retro_start."""
+
+    def test_observation_option_accepted(self, tmp_path: Path) -> None:
+        """--observation option is accepted without error."""
+        from agent_design.cli.commands.retro import retro as retro_cmd
+
+        _write_discussion(tmp_path)
+        runner = CliRunner()
+        with (
+            patch("agent_design.cli.commands.retro.run_print_team", return_value=0),
+            patch("agent_design.cli.commands.retro.build_retro_start", return_value="prompt"),
+        ):
+            result = runner.invoke(
+                retro_cmd,
+                ["--repo-path", str(tmp_path), "--observation", "Agents were not collaborating."],
+            )
+        assert result.exit_code == 0
+
+    def test_observation_passed_to_build_retro_start(self, tmp_path: Path) -> None:
+        """When --observation is given, build_retro_start receives it as human_observation."""
+        from agent_design.cli.commands.retro import retro as retro_cmd
+
+        _write_discussion(tmp_path)
+        captured: list[dict] = []
+
+        def capture_build(**kwargs: object) -> str:
+            captured.append(dict(kwargs))
+            return "prompt"
+
+        runner = CliRunner()
+        with (
+            patch("agent_design.cli.commands.retro.run_print_team", return_value=0),
+            patch("agent_design.cli.commands.retro.build_retro_start", side_effect=capture_build),
+        ):
+            runner.invoke(
+                retro_cmd,
+                ["--repo-path", str(tmp_path), "--observation", "EM was too directive."],
+            )
+
+        assert len(captured) == 1
+        assert captured[0].get("human_observation") == "EM was too directive."
+
+    def test_no_observation_passes_none_to_build_retro_start(self, tmp_path: Path) -> None:
+        """When --observation is omitted, build_retro_start receives None for human_observation."""
+        from agent_design.cli.commands.retro import retro as retro_cmd
+
+        _write_discussion(tmp_path)
+        captured: list[dict] = []
+
+        def capture_build(**kwargs: object) -> str:
+            captured.append(dict(kwargs))
+            return "prompt"
+
+        runner = CliRunner()
+        with (
+            patch("agent_design.cli.commands.retro.run_print_team", return_value=0),
+            patch("agent_design.cli.commands.retro.build_retro_start", side_effect=capture_build),
+        ):
+            runner.invoke(retro_cmd, ["--repo-path", str(tmp_path)])
+
+        assert len(captured) == 1
+        assert captured[0].get("human_observation") is None

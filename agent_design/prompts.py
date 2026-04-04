@@ -244,6 +244,7 @@ def build_retro_start(
     discussion_path: str,
     tasks_path: str | None,
     decisions_path: str | None,
+    human_observation: str | None = None,
     available_specialists: str | None = None,
 ) -> str:
     """Build the Eng Manager start message for a retrospective session.
@@ -259,6 +260,7 @@ def build_retro_start(
         discussion_path: Absolute path to DISCUSSION.md (for inclusion in prompt)
         tasks_path: Absolute path to TASKS.md (for inclusion in prompt), or None if absent
         decisions_path: Absolute path to DECISIONS.md (for inclusion in prompt), or None if absent
+        human_observation: Optional human-provided observation to include in the retro prompt
         available_specialists: Unused; kept for API consistency (optional)
 
     Returns:
@@ -266,6 +268,12 @@ def build_retro_start(
     """
     tasks_line = f"- Tasks:     {tasks_path}" if tasks_path is not None else "- Tasks:     (not present)"
     decisions_line = f"- Decisions: {decisions_path}" if decisions_path is not None else "- Decisions: (not present)"
+
+    observation_block = (
+        f"\nHuman observation (treat this as a first-class input alongside the artefacts above):\n{human_observation}\n"
+        if human_observation
+        else ""
+    )
 
     return f"""\
 Retrospective session for project: {project_slug}
@@ -275,7 +283,7 @@ Read the following artefacts to understand what happened this sprint:
 - Discussion: {discussion_path}
 {tasks_line}
 {decisions_line}
-
+{observation_block}
 Your task:
 1. Identify friction points and patterns from the discussion and task board.
 2. For each agent involved in a friction point, tell them specifically what was observed.

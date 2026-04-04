@@ -892,3 +892,68 @@ def test_build_apply_suggestion_start_does_not_accept_available_specialists() ->
             agents_dir="/Users/mark/.claude/agents",
             available_specialists="architect",
         )
+
+
+# ---------------------------------------------------------------------------
+# build_retro_start — human_observation parameter
+# ---------------------------------------------------------------------------
+
+
+def test_build_retro_start_accepts_human_observation_kwarg() -> None:
+    """build_retro_start accepts optional human_observation parameter."""
+    from agent_design.prompts import build_retro_start
+
+    result = build_retro_start(
+        project_slug="my-feature",
+        date="2026-04-04",
+        discussion_path="/repo/.agent-design/DISCUSSION.md",
+        tasks_path="/repo/TASKS.md",
+        decisions_path="/repo/.agent-design/DECISIONS.md",
+        human_observation="The EM was too directive.",
+    )
+    assert isinstance(result, str)
+
+
+def test_build_retro_start_includes_observation_text_when_provided() -> None:
+    """When human_observation is given, its text appears in the prompt."""
+    from agent_design.prompts import build_retro_start
+
+    result = build_retro_start(
+        project_slug="my-feature",
+        date="2026-04-04",
+        discussion_path="/repo/.agent-design/DISCUSSION.md",
+        tasks_path=None,
+        decisions_path=None,
+        human_observation="Agents were not collaborating at all.",
+    )
+    assert "Agents were not collaborating at all." in result
+
+
+def test_build_retro_start_omits_observation_block_when_none() -> None:
+    """When human_observation is None, no observation block appears in the prompt."""
+    from agent_design.prompts import build_retro_start
+
+    result = build_retro_start(
+        project_slug="my-feature",
+        date="2026-04-04",
+        discussion_path="/repo/.agent-design/DISCUSSION.md",
+        tasks_path=None,
+        decisions_path=None,
+        human_observation=None,
+    )
+    assert "Human observation" not in result
+
+
+def test_build_retro_start_labels_observation_as_first_class_input() -> None:
+    """Observation block labels the input as first-class (not just a note)."""
+    from agent_design.prompts import build_retro_start
+
+    result = build_retro_start(
+        project_slug="my-feature",
+        date="2026-04-04",
+        discussion_path="/repo/.agent-design/DISCUSSION.md",
+        tasks_path=None,
+        decisions_path=None,
+        human_observation="Something I noticed.",
+    )
+    assert "Human observation" in result

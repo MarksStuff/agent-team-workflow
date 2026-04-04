@@ -43,7 +43,12 @@ def _get_project_slug(repo_path: Path) -> str:
     default=".",
     help="Path to the target repository (default: current dir)",
 )
-def retro(repo_path: Path) -> None:
+@click.option(
+    "--observation",
+    default=None,
+    help="Your observation about the sprint to include in the retrospective.",
+)
+def retro(repo_path: Path, observation: str | None) -> None:
     """Run a retrospective session on the most recent sprint.
 
     Launches a --print multi-agent retrospective session where the Retrospective
@@ -86,6 +91,7 @@ def retro(repo_path: Path) -> None:
         discussion_path=str(discussion_path),
         tasks_path=tasks_path,
         decisions_path=decisions_path,
+        human_observation=observation,
     )
     worktree_path = repo_path / ".agent-design"
     rc = run_print_team(worktree_path, repo_path, start_message)
