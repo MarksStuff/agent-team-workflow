@@ -82,6 +82,61 @@ def run_solo(
     return result.returncode
 
 
+def run_print_team(
+    worktree_path: Path,
+    target_repo: Path,
+    start_message: str,
+) -> int:
+    """Run a non-interactive agent team session in --print mode.
+
+    Used for memory update sessions (remember, review-feedback) where the
+    output is consumed programmatically rather than displayed interactively.
+    Combines --print mode (like run_solo) with CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
+    (like run_team), so multiple agents collaborate in a headless session.
+
+    Args:
+        worktree_path: Path to .agent-design/ worktree (claude's working dir)
+        target_repo: Path to target repo (added as readable directory)
+        start_message: Initial message delivered as the first turn
+
+    Returns:
+        Exit code from claude process
+    """
+    env = os.environ.copy()
+    api_key = _get_api_key()
+    if api_key:
+        env["ANTHROPIC_API_KEY"] = api_key
+    env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] = "1"
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as mcp_file:
+        json.dump({"mcpServers": {}}, mcp_file)
+        mcp_config_path = mcp_file.name
+
+    try:
+        result = subprocess.run(
+            [
+                "claude",
+                "--print",
+                "--dangerously-skip-permissions",
+                "--strict-mcp-config",
+                "--mcp-config",
+                mcp_config_path,
+                "--add-dir",
+                str(target_repo),
+                "--agent",
+                "eng_manager",
+                "--",
+                start_message,
+            ],
+            cwd=str(worktree_path),
+            env=env,
+        )
+    finally:
+        os.unlink(mcp_config_path)
+
+    return result.returncode
+
+
 def run_team(
     worktree_path: Path,
     target_repo: Path,
