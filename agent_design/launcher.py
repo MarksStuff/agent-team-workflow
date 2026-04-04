@@ -11,11 +11,6 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from rich.console import Console
-from rich.panel import Panel
-
-console = Console()
-
 
 def _get_api_key() -> str | None:
     """Get Anthropic API key from environment or ~/.anthropic_api_key.
@@ -98,13 +93,13 @@ def run_team(
     can interact (Shift+Down to cycle teammates, type to message them).
     Returns when the user exits claude or the session completes.
 
-    The start_message is printed to the console before launching so the
-    user can paste it as the first message to kick off the team.
+    The start_message is passed as a positional argument to claude so the
+    session begins immediately without requiring the user to copy-paste.
 
     Args:
         worktree_path: Path to .agent-design/ worktree (claude's working dir)
         target_repo: Path to target repo (added as readable directory)
-        start_message: Initial message to paste into claude to start the team
+        start_message: Initial message delivered as the first turn
 
     Returns:
         Exit code from claude process
@@ -115,27 +110,17 @@ def run_team(
         env["ANTHROPIC_API_KEY"] = api_key
     env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] = "1"
 
-    cmd = [
-        "claude",
-        "--dangerously-skip-permissions",
-        "--agent",
-        "eng_manager",
-        "--add-dir",
-        str(target_repo),
-    ]
-
-    console.print(
-        Panel(
-            start_message,
-            title="[bold cyan]Paste this to start the agent team[/bold cyan]",
-            subtitle="[dim]Copy the text above and paste it when Claude starts[/dim]",
-            border_style="cyan",
-        )
-    )
-    console.print()
-
     result = subprocess.run(
-        cmd,
+        [
+            "claude",
+            "--dangerously-skip-permissions",
+            "--agent",
+            "eng_manager",
+            "--add-dir",
+            str(target_repo),
+            "--",
+            start_message,
+        ],
         cwd=str(worktree_path),
         env=env,
     )
@@ -153,10 +138,13 @@ def run_team_in_repo(
     agents can read and write source files directly. The worktree is added
     as an extra directory so agents can read .agent-design/DESIGN.md.
 
+    The start_message is passed as a positional argument to claude so the
+    session begins immediately without requiring the user to copy-paste.
+
     Args:
         repo_path: Path to target repo (claude's working dir)
         worktree_path: Path to .agent-design/ worktree (added as readable dir)
-        start_message: Initial message to paste into claude to start the team
+        start_message: Initial message delivered as the first turn
 
     Returns:
         Exit code from claude process
@@ -167,27 +155,17 @@ def run_team_in_repo(
         env["ANTHROPIC_API_KEY"] = api_key
     env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] = "1"
 
-    cmd = [
-        "claude",
-        "--dangerously-skip-permissions",
-        "--agent",
-        "eng_manager",
-        "--add-dir",
-        str(worktree_path),
-    ]
-
-    console.print(
-        Panel(
-            start_message,
-            title="[bold cyan]Paste this to start the implementation sprint[/bold cyan]",
-            subtitle="[dim]Copy the text above and paste it when Claude starts[/dim]",
-            border_style="cyan",
-        )
-    )
-    console.print()
-
     result = subprocess.run(
-        cmd,
+        [
+            "claude",
+            "--dangerously-skip-permissions",
+            "--agent",
+            "eng_manager",
+            "--add-dir",
+            str(worktree_path),
+            "--",
+            start_message,
+        ],
         cwd=str(repo_path),
         env=env,
     )
