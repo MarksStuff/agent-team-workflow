@@ -366,11 +366,27 @@ and escalate to the human for approval.
 3. Notifies the human via a `StopHook` notification (or a clear panel in
    the session output): "New agent proposed: cryptography_expert.
    Run `agent-design review-proposal cryptography_expert` to review and apply."
-4. Continues the session without the missing agent, clearly flagging the
-   gap: "Proceeding without cryptography review. §3.4 should be re-examined
-   once cryptography_expert is available."
+4. Identifies which tasks are **gated** on the missing agent and which are not.
+   Tasks requiring the missing agent's input to make a *correct decision* are
+   marked 🚫 blocked in TASKS.md. Tasks that don't depend on that input
+   continue. The EM posts to DISCUSSION.md which tasks are held and why.
 
-The session is not blocked. The proposal is a side-effect, not a gate.
+**Blocking is task-scoped, not session-scoped.** The right question is not
+"does the session block?" but "does *this specific task* require the missing
+agent's judgment to be correct?" If yes, that task waits. If no, it proceeds.
+
+Concretely:
+- "Choose key derivation algorithm and parameters" → **blocked**. Picking
+  the wrong algorithm and implementing it creates rework. Wait for the expert.
+- "Write the user registration endpoint" → **not blocked**. That work doesn't
+  depend on the crypto decision. Continue.
+
+If all remaining tasks are gated on the missing agent, the effective result
+is a full session block. If only one subtask is gated, everything else makes
+progress. The EM decides based on dependency, not a blanket policy.
+
+When the human approves the proposal and the agent becomes available mid-session,
+the EM spawns them, they review the held tasks, and the session resumes.
 
 **Proposal file format** (`.agent-design/proposals/<name>.md`):
 
@@ -931,8 +947,12 @@ If you identify a domain gap that no current team member can cover:
    The proposal must include: the gap it fills, proposed location (global
    vs. repo-local) with rationale, agent type (domain expert vs. executor),
    and the complete agent definition file content ready to use as-is.
-3. Notify the human and continue. State clearly which parts of the work
-   you're leaving flagged for the missing expert to review.
+3. Identify which tasks are gated on the missing agent. For each task,
+   ask: "Would proceeding without this agent's input risk implementing
+   something wrong?" If yes: mark it 🚫 blocked in TASKS.md with the
+   reason. If no: continue. Post a clear summary to DISCUSSION.md:
+   "Blocked: [task list]. Proceeding: [task list]."
+4. Notify the human and proceed with unblocked tasks.
 
 You never create agent files yourself. You propose; the human approves.
 ```
