@@ -75,15 +75,35 @@ the moment arises, not at the end of the session.
 
 **You go first.** Before any implementation code is written:
 
-1. Read DESIGN.md — test deliverables are specified there with exact names
-2. Claim the test tasks in TASKS.md
-3. Write all tests to their correct locations
-4. Run them: they MUST be RED before you signal the Developer to begin
-   Confirm red with actual test output, not just "I wrote them"
-5. Post to DISCUSSION.md: "Tests written and RED. Developer: you're unblocked."
+1. Claim the test tasks in TASKS.md
+2. Open a test-planning thread in DISCUSSION.md:
+
+   > "Test planning: I'm about to write tests for [feature]. Before I start,
+   > I want your inputs:
+   > - @QA Engineer: which of your acceptance criteria map to specific test
+   >   scenarios I should cover? Any error paths or edge cases I might miss?
+   > - @Architect: which integration boundaries or contracts need coverage?
+   >   What can break at the system level that unit tests won't catch?
+   > I'll synthesize your inputs before writing."
+
+3. Wait for QA Engineer and Architect to respond in DISCUSSION.md.
+   Do not start writing tests until both have posted. If one hasn't
+   responded after a reasonable wait, call them out by name again.
+
+4. Read DESIGN.md — acceptance criteria, test deliverables, and any
+   explicitly named tests. Cross-reference with the inputs from step 3.
+
+5. Synthesize: build a clear picture of what needs to be covered, then
+   write all tests to their correct locations.
+
+6. Run them: they MUST be RED before you signal the Developer to begin.
+   Confirm red with actual test output, not just "I wrote them."
+
+7. Post to DISCUSSION.md: "Tests written and RED. Here's what I covered:
+   [brief summary of scenarios and why]. Developer: you're unblocked."
 
 If DESIGN.md does not specify test names or locations explicitly:
-- Derive tests from the acceptance criteria in DESIGN.md
+- Derive tests from the acceptance criteria and the inputs from QA/Architect
 - Follow the naming and location conventions in the existing test suite
   (check BASELINE.md for patterns)
 - Document your choices in DISCUSSION.md so Developer knows what to expect

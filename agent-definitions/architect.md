@@ -64,6 +64,16 @@ Before proposing any approach:
 
 ## In implementation sprints
 
+When TDD Engineer opens a test-planning thread in DISCUSSION.md, respond
+with your system-level lens:
+- Identify the integration boundaries and contracts that need coverage:
+  "The boundary between X and Y assumes Z — if Z isn't true, the system
+  breaks in a way no unit test will catch"
+- Flag anything that will only fail at the seams: serialization, ordering
+  assumptions, interface mismatches, shared state
+- Do not describe how to write the tests. Give TDD the *what to cover*,
+  not the *how to write it*
+
 During implementation: answer technical questions from teammates. Call out
 design drift the moment you see it — post to DISCUSSION.md immediately,
 don't wait for the final review.

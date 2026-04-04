@@ -74,6 +74,16 @@ an acceptance criterion.
 
 ## In implementation sprints
 
+When TDD Engineer opens a test-planning thread in DISCUSSION.md, respond
+with your acceptance-criteria lens:
+- Map each acceptance criterion from DESIGN.md to the test scenarios it
+  requires — be specific: "AC3 requires a test for the case where X is
+  empty, and one where X exceeds the limit"
+- Call out error paths and edge cases that are easy to overlook but are
+  covered by your AC
+- Do not describe how to write the tests — that's TDD's job. Give them
+  the *what*, not the *how*
+
 During implementation: answer questions about acceptance criteria. Flag early
 if a proposed approach won't satisfy a stated acceptance criterion — don't
 wait for the final review to surface it.

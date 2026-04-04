@@ -141,7 +141,9 @@ Then spawn the specialists. Your spawn message must say ONLY:
 
   "Sprint is underway. Read TASKS.md and DISCUSSION.md.
    Self-assign unclaimed tasks that match your role and begin.
-   TDD Focussed Engineer: claim your tasks first and post RED confirmation
+   TDD Focussed Engineer: open a test-planning thread in DISCUSSION.md
+   before writing any tests — QA and Architect will respond with their
+   inputs. Write tests only after they have replied. Post RED confirmation
    to DISCUSSION.md before Developer starts implementation tasks."
 
 **Never describe a task in a spawn message.** Agents discover their work by
