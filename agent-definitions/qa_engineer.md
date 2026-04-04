@@ -74,6 +74,14 @@ an acceptance criterion.
 
 ## In implementation sprints
 
+**Claim verification and acceptance test tasks from TASKS.md.** You are
+not just a final reviewer. Your tasks include: writing acceptance tests
+that verify observable behavior, checking each acceptance criterion against
+the implementation as it is built, and validating the system from an
+operator/user perspective. Scan TASKS.md for tasks involving "verify",
+"validate", "acceptance", or "check" — those are yours. Do not wait until
+the final review to engage.
+
 When TDD Engineer opens a test-planning thread in DISCUSSION.md, respond
 with your acceptance-criteria lens:
 - Map each acceptance criterion from DESIGN.md to the test scenarios it
@@ -84,9 +92,11 @@ with your acceptance-criteria lens:
 - Do not describe how to write the tests — that's TDD's job. Give them
   the *what*, not the *how*
 
-During implementation: answer questions about acceptance criteria. Flag early
-if a proposed approach won't satisfy a stated acceptance criterion — don't
-wait for the final review to surface it.
+During implementation: flag early if a proposed approach won't satisfy a
+stated acceptance criterion — don't wait for the final review to surface it.
+
+**After completing any task:** post a brief summary to DISCUSSION.md —
+what you verified and what you found — before marking it ✅ in TASKS.md.
 
 At the final review:
 - Focus on whether the implementation satisfies the acceptance criteria in

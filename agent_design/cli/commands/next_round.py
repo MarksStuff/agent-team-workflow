@@ -13,7 +13,7 @@ from rich.panel import Panel
 
 from agent_design.git_ops import _nosign_flags, _run_git_in_target, checkpoint, detect_existing_worktree
 from agent_design.launcher import run_team
-from agent_design.prompts import build_feedback_start, build_review_start
+from agent_design.prompts import build_continue_start
 from agent_design.state import RoundState, load_round_state, save_round_state
 
 console = Console()
@@ -136,7 +136,7 @@ def _fetch_pr_feedback(pr_url: str, round_num: int, worktree_path: Path) -> Path
     return feedback_file
 
 
-def _create_or_update_pr(state_phase_before: str, worktree_path: Path, state: RoundState) -> str | None:
+def _create_or_update_pr(worktree_path: Path, state: RoundState) -> str | None:
     """Create or update PR for design artifacts."""
     target_repo = Path(state.target_repo)
     slug = state.feature_slug
@@ -276,8 +276,8 @@ def _get_repo_name(repo_path: Path) -> str:
 def next_round(repo_path: Path) -> None:
     """Run the next design stage.
 
-    Stage 2 (first call): agent team design review.
-    Stage 3+ (subsequent calls): agent team incorporates your PR feedback.
+    Deprecated: use 'agent-design continue' instead.
+    This command is kept as a backward-compatible alias.
     """
     repo_path = repo_path.resolve()
     worktree_path = repo_path / ".agent-design"
@@ -287,70 +287,23 @@ def next_round(repo_path: Path) -> None:
         raise click.Abort() from None
 
     state = load_round_state(worktree_path)
-    console.print(f"\n[bold]agent-design next[/bold] — [cyan]{state.feature_slug}[/cyan] (phase: {state.phase})\n")
+    console.print(f"\n[bold]agent-design next[/bold] — [cyan]{state.feature_slug}[/cyan]\n")
 
-    if state.phase == "open_discussion":
-        console.print(Panel("Stage 2 — Agent team: design review", border_style="magenta"))
-        start_message = build_review_start(state.feature_request)
-        rc = run_team(worktree_path, Path(state.target_repo), start_message)
-        if rc != 0:
-            console.print(f"[yellow]⚠ Claude exited with code {rc}[/yellow]")
+    console.print(Panel("Continuing design workflow — agent team session", border_style="magenta"))
 
-        state.discussion_turns += 1
-        state.completed.append("open_discussion")
-        state.phase = "awaiting_human"
+    start_message = build_continue_start(state.feature_request)
+    rc = run_team(worktree_path, Path(state.target_repo), start_message)
+    if rc != 0:
+        console.print(f"[yellow]⚠ Claude exited with code {rc}[/yellow]")
+
+    state.discussion_turns += 1
+    tag = f"chk-continue-{state.discussion_turns}"
+    save_round_state(worktree_path, state)
+    checkpoint(worktree_path, f"continue: session {state.discussion_turns} complete", tag)
+    console.print(f"[green]✓[/green] Checkpoint: {tag}\n")
+
+    pr_url = _create_or_update_pr(worktree_path, state)
+    if pr_url:
+        state.pr_url = pr_url
+        state.checkpoint_tag = tag
         save_round_state(worktree_path, state)
-        checkpoint(worktree_path, "stage 2: design review complete", "chk-review")
-        console.print("[green]✓[/green] Checkpoint: chk-review\n")
-
-        pr_url = _create_or_update_pr("open_discussion", worktree_path, state)
-        if pr_url:
-            state.pr_url = pr_url
-            state.checkpoint_tag = "chk-review"
-            save_round_state(worktree_path, state)
-
-        console.print(
-            Panel(
-                "Review the PR, leave comments, then run:\n\n"
-                "  [bold cyan]agent-design next[/bold cyan]\n\n"
-                "to have the team incorporate your feedback.",
-                title="[green]✓ Design review complete[/green]",
-                border_style="green",
-            )
-        )
-
-    elif state.phase == "awaiting_human":
-        round_num = state.discussion_turns + 1
-        console.print(
-            Panel(
-                f"Stage {round_num + 2} — Agent team: incorporating feedback (round {round_num})",
-                border_style="magenta",
-            )
-        )
-
-        feedback_file = worktree_path / "feedback" / f"human-round-{round_num}.md"
-        if feedback_file.exists() and "(add feedback here)" not in feedback_file.read_text():
-            console.print(f"[green]✓[/green] Using existing feedback file: {feedback_file.name}")
-        elif state.pr_url:
-            _fetch_pr_feedback(state.pr_url, round_num, worktree_path)
-        else:
-            console.print(f"[red]✗ No PR URL in state and no feedback file at {feedback_file}[/red]")
-            console.print("[dim]  Fix: set pr_url in ROUND_STATE.json, or write the file manually[/dim]")
-            raise click.Abort()
-
-        start_message = build_feedback_start(round_num, feature_request=state.feature_request)
-        rc = run_team(worktree_path, Path(state.target_repo), start_message)
-        if rc != 0:
-            console.print(f"[yellow]⚠ Claude exited with code {rc}[/yellow]")
-
-        state.discussion_turns += 1
-        tag = f"chk-feedback-{round_num}"
-        save_round_state(worktree_path, state)
-        checkpoint(worktree_path, f"stage {round_num + 2}: feedback round {round_num} complete", tag)
-        console.print(f"[green]✓[/green] Checkpoint: {tag}\n")
-
-        _create_or_update_pr("awaiting_human", worktree_path, state)
-
-    else:
-        console.print(f"[red]✗ Unexpected phase: {state.phase}[/red]")
-        raise click.Abort() from None

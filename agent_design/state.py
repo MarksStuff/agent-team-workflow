@@ -1,11 +1,8 @@
 """State management for agent design sessions."""
 
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
-from typing import Literal
-
-PhaseType = Literal["baseline", "initial_draft", "open_discussion", "awaiting_human", "complete"]
 
 
 @dataclass
@@ -16,7 +13,6 @@ class RoundState:
         feature_slug: Short identifier for the feature (e.g., 'news-admin-cli')
         feature_request: Full feature request text
         target_repo: Absolute path to target repository
-        phase: Current phase of the workflow
         discussion_turns: Number of discussion turns completed
         baseline_commit: Git commit SHA of baseline analysis (if completed)
         completed: List of completed phase names
@@ -27,7 +23,6 @@ class RoundState:
     feature_slug: str
     feature_request: str
     target_repo: str
-    phase: PhaseType = "baseline"
     discussion_turns: int = 0
     baseline_commit: str | None = None
     completed: list[str] = field(default_factory=list)
@@ -55,6 +50,10 @@ def load_round_state(worktree_path: Path) -> RoundState:
     try:
         with open(state_file) as f:
             data = json.load(f)
+        # Strip unknown keys for backward-compat with old ROUND_STATE.json
+        # files that may contain legacy fields (e.g. 'phase').
+        known_fields = {f.name for f in fields(RoundState)}
+        data = {k: v for k, v in data.items() if k in known_fields}
         return RoundState(**data)
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid JSON in ROUND_STATE.json: {e}") from e

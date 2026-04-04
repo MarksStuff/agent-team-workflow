@@ -49,14 +49,6 @@ def rollback(tag: str, repo_path: Path) -> None:
         state = load_round_state(worktree_path)
         state.checkpoint_tag = tag
 
-        # Infer phase from tag
-        if "phase-0" in tag:
-            state.phase = "baseline"
-        elif "phase-1" in tag:
-            state.phase = "initial_draft"
-        elif "phase-2" in tag or "round" in tag:
-            state.phase = "open_discussion"
-
         save_round_state(worktree_path, state)
         console.print("✓ ROUND_STATE.json updated")
 

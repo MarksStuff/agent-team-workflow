@@ -54,7 +54,6 @@ def close(repo_path: Path, delete_branch: bool) -> None:
 
         # Final checkpoint
         console.print("\n[bold]Creating final checkpoint...[/bold]")
-        state.phase = "complete"
         save_round_state(worktree_path, state)
         checkpoint(worktree_path, "checkpoint: session complete", "chk-complete")
         console.print("✓ Final checkpoint created")

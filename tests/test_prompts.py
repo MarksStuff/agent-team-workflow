@@ -2,11 +2,12 @@
 
 from pathlib import Path
 
+import pytest
+
 from agent_design.prompts import (
     _parse_frontmatter_name,
-    build_feedback_start,
+    build_continue_start,
     build_impl_start,
-    build_review_start,
     get_available_specialists,
 )
 
@@ -160,12 +161,6 @@ def test_get_available_specialists_comma_separated(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_build_review_start_includes_specialists() -> None:
-    result = build_review_start("Build a login system", available_specialists="architect, developer")
-    assert "Available specialists: architect, developer" in result
-    assert "Build a login system" in result
-
-
 def test_build_impl_start_includes_specialists() -> None:
     result = build_impl_start("Add caching layer", available_specialists="architect, developer, qa_engineer")
     assert "Available specialists: architect, developer, qa_engineer" in result
@@ -178,21 +173,97 @@ def test_build_impl_start_resume_includes_specialists() -> None:
     assert "resume" in result.lower()
 
 
-def test_build_feedback_start_includes_specialists() -> None:
-    result = build_feedback_start(2, feature_request="Add caching", available_specialists="architect, developer")
+# ---------------------------------------------------------------------------
+# build_continue_start — replaces build_review_start and build_feedback_start
+# (AC1 in DESIGN.md Phase 5 acceptance criteria)
+# ---------------------------------------------------------------------------
+
+
+def test_build_continue_start_includes_feature_request() -> None:
+    """Returned string contains the feature request text (AC1)."""
+    result = build_continue_start("Build a login system", available_specialists="architect, developer")
+    assert "Build a login system" in result
+
+
+def test_build_continue_start_includes_available_specialists() -> None:
+    """Returned string contains 'Available specialists: <value>' (AC1)."""
+    result = build_continue_start("Build a login system", available_specialists="architect, developer")
     assert "Available specialists: architect, developer" in result
-    assert "round 2" in result.lower()
-    assert "Add caching" in result
 
 
-def test_build_feedback_start_includes_feature_request() -> None:
-    result = build_feedback_start(1, feature_request="My feature", available_specialists="architect")
-    assert "My feature" in result
-
-
-def test_build_review_start_empty_specialists_allowed() -> None:
-    """build_review_start accepts an empty specialists string without error."""
-    result = build_review_start("Build something", available_specialists="")
+def test_build_continue_start_returns_non_empty_string() -> None:
+    """Returns a non-empty string regardless of inputs (AC1)."""
+    result = build_continue_start("anything", available_specialists="architect")
     assert isinstance(result, str)
-    assert "Build something" in result
-    assert "Available specialists:" in result
+    assert len(result) > 0
+
+
+def test_build_continue_start_empty_specialists_does_not_raise() -> None:
+    """Called with empty specialists string returns a string without raising (AC1, EC1 adjacent)."""
+    result = build_continue_start("anything", available_specialists="")
+    assert isinstance(result, str)
+
+
+def test_build_continue_start_empty_feature_request_does_not_raise() -> None:
+    """Called with empty feature_request string returns a string without raising (EC1)."""
+    result = build_continue_start("", available_specialists="architect")
+    assert isinstance(result, str)
+
+
+def test_build_continue_start_calls_get_available_specialists_when_none(tmp_path: Path) -> None:
+    """When available_specialists is None, calls get_available_specialists() (AC1).
+
+    We verify this by passing an agents_dir via the injected path — but since
+    build_continue_start() delegates to get_available_specialists() with the
+    default (real) agents dir, we instead verify that passing None does not
+    raise and returns a string. The integration with get_available_specialists
+    is exercised separately.
+    """
+    # No available_specialists arg — must not raise and must return str
+    result = build_continue_start("My feature")
+    assert isinstance(result, str)
+
+
+def test_build_continue_start_no_phase_assumption_in_output() -> None:
+    """Output must not hardcode 'Stage 2' or 'round N' language (Architect contract)."""
+    result = build_continue_start("My feature", available_specialists="architect")
+    assert "Stage 2" not in result
+    assert "Stage 3" not in result
+    # 'round N' pattern — check for common round-number strings
+    assert "round 1" not in result.lower()
+    assert "round 2" not in result.lower()
+
+
+def test_build_continue_start_no_round_num_parameter() -> None:
+    """build_continue_start does not accept round_num as a parameter (Architect contract).
+
+    The function signature is build_continue_start(feature_request, available_specialists=None).
+    Passing round_num as a keyword arg must raise TypeError.
+    """
+    with pytest.raises(TypeError):
+        build_continue_start("feature", available_specialists="arch", round_num=3)  # type: ignore[call-arg]
+
+
+def test_build_review_start_no_longer_importable() -> None:
+    """After Phase 5: build_review_start must not be importable from prompts (AC1).
+
+    This test will be RED until build_review_start is removed.
+    """
+
+    import agent_design.prompts as prompts_module
+
+    assert not hasattr(prompts_module, "build_review_start"), (
+        "build_review_start still exists in prompts.py — it must be removed in Phase 5"
+    )
+
+
+def test_build_feedback_start_no_longer_importable() -> None:
+    """After Phase 5: build_feedback_start must not be importable from prompts (AC1).
+
+    This test will be RED until build_feedback_start is removed.
+    """
+    import agent_design.prompts as prompts_module
+
+    assert not hasattr(prompts_module, "build_feedback_start"), (
+        "build_feedback_start still exists in prompts.py — it must be removed in Phase 5"
+    )
