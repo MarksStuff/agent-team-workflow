@@ -259,8 +259,8 @@ class TestArchitectDesignDriftPosting:
         content = _content(ARCHITECT)
         # The existing file already mentions "Call out design drift the moment you see it"
         # but DESIGN.md requires an explicit instruction to post to DISCUSSION.md
-        assert "post to DISCUSSION.md" in content, (
-            "architect.md is missing explicit instruction to post to DISCUSSION.md when spotting design drift"
+        assert "post to .agent-design/DISCUSSION.md" in content, (
+            "architect.md is missing explicit instruction to post to .agent-design/DISCUSSION.md when spotting design drift"
         )
 
 
@@ -278,8 +278,8 @@ class TestDeveloperDesignGapProtocol:
 
     def test_posts_to_discussion_on_gap(self):
         content = _content(DEVELOPER)
-        assert "Post to DISCUSSION.md immediately" in content, (
-            "developer.md is missing 'Post to DISCUSSION.md immediately' for design gaps"
+        assert "Post to .agent-design/DISCUSSION.md immediately" in content, (
+            "developer.md is missing 'Post to .agent-design/DISCUSSION.md immediately' for design gaps"
         )
 
     def test_states_what_design_says_vs_reality(self):
@@ -323,8 +323,8 @@ class TestTDDEngineerTestDerivationGuidance:
 
     def test_documents_choices_in_discussion(self):
         content = _content(TDD_ENGINEER)
-        assert "Document your choices in DISCUSSION.md" in content, (
-            "tdd_focused_engineer.md is missing 'Document your choices in DISCUSSION.md'"
+        assert "Document your choices in .agent-design/DISCUSSION.md" in content, (
+            "tdd_focused_engineer.md is missing 'Document your choices in .agent-design/DISCUSSION.md'"
         )
 
 

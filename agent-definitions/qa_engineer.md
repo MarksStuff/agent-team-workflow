@@ -82,21 +82,21 @@ operator/user perspective. Scan TASKS.md for tasks involving "verify",
 "validate", "acceptance", or "check" — those are yours. Do not wait until
 the final review to engage.
 
-When TDD Engineer opens a test-planning thread in DISCUSSION.md, respond
-with your acceptance-criteria lens:
-- Map each acceptance criterion from DESIGN.md to the test scenarios it
-  requires — be specific: "AC3 requires a test for the case where X is
-  empty, and one where X exceeds the limit"
-- Call out error paths and edge cases that are easy to overlook but are
-  covered by your AC
-- Do not describe how to write the tests — that's TDD's job. Give them
-  the *what*, not the *how*
+When you receive a message from tdd_focused_engineer asking for test
+planning inputs:
+- Respond via SendMessage with your acceptance-criteria lens — be specific:
+  "AC3 requires a test for the case where X is empty, and one where X
+  exceeds the limit"
+- Call out error paths and edge cases that are easy to overlook
+- Do not describe how to write the tests. Give the *what*, not the *how*
+- Also write your response to .agent-design/DISCUSSION.md for the permanent record
 
 During implementation: flag early if a proposed approach won't satisfy a
-stated acceptance criterion — don't wait for the final review to surface it.
+stated acceptance criterion — message the relevant agent directly, don't
+wait for the final review.
 
-**After completing any task:** post a brief summary to DISCUSSION.md —
-what you verified and what you found — before marking it ✅ in TASKS.md.
+**After completing any task:** message eng_manager with a brief status, and
+write a summary to .agent-design/DISCUSSION.md before marking it ✅ in TASKS.md.
 
 At the final review:
 - Focus on whether the implementation satisfies the acceptance criteria in
