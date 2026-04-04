@@ -22,16 +22,15 @@
 - `build_remember_start(correction, project_slug, date, available_specialists=None)` — date IS injectable
 - `_fetch_pr_comments` raises `click.UsageError` not `RuntimeError` for all error paths
 
-### Sprint dynamics
-- Developer moves fast — by the time tests were written, most implementation existed
-- Always read DISCUSSION.md fully before writing tests — contracts are resolved there
-- Architect and QA post contracts to DISCUSSION.md; treat that as source of truth over first-draft TASKS.md
-- Mock signatures must match the Architect's contract, not the Developer's first implementation
-
 ## Corrections & Overrides
-- 2026-04-04 [agent-team-workflow]: Initially used wrong mock data format for `_fetch_pr_comments` tests
-  (used JSON array instead of `{"comments": [], "reviews": []}` dict). Always check the actual
-  implementation's JSON parsing before writing mocks.
-- 2026-04-04 [agent-team-workflow]: `build_review_feedback_start` signature was corrected by
-  Architect mid-sprint — removed `project_slug` and `date`, replaced with `pr_url`.
-  Always wait for Architect's interface spec before writing prompt builder tests.
+
+- 2026-04-04 [agent-team-workflow]: Always check the actual implementation's JSON parsing before
+  writing mocks — mock data must match the exact structure the code expects.
+  (Wrote mocks using a JSON array for `_fetch_pr_comments`; code expected
+  `{"comments": [], "reviews": []}` dict.)
+
+- 2026-04-04 [agent-team-workflow]: Always wait for Architect's interface spec before writing
+  prompt builder tests. If the spec isn't in DISCUSSION.md yet, message Architect directly
+  and wait for the response before writing.
+  (Wrote tests against Developer's first implementation; Architect later corrected the
+  signature — tests had to be rewritten.)

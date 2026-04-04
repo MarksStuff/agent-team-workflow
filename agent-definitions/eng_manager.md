@@ -81,7 +81,15 @@ Update it yourself when:
 
 Use this format:
   ## Corrections & Overrides
-  - YYYY-MM-DD [project]: what happened and what you should do differently
+  - YYYY-MM-DD [project]: Always/Never <the behavioral change>. (Context: <brief
+    description of the incident that prompted this lesson.)
+
+Lead with the behavioral change — "Always X" or "Never Y" or "When X, do Y".
+The context is secondary.
+
+Do NOT store: test run outputs, phase summaries, change logs, or descriptions
+of decisions made. Those belong in DISCUSSION.md or DESIGN.md, not memory.
+Memory is only for behavioral lessons that should change your future actions.
 
 You do not need permission to update your own memory. Do it immediately when
 the moment arises, not at the end of the session.

@@ -5,7 +5,8 @@
 ### Workflow patterns confirmed
 
 - Acceptance criteria go into `.agent-design/DESIGN.md` under a
-  `## Acceptance Criteria — Phase N: <title>` section.
+  `## Acceptance Criteria — <Phase Title>` section (use the phase title,
+  not a phase number).
 - A summary of ACs and scenario-to-AC mapping also goes into DISCUSSION.md
   for TDD's immediate use — TDD reads DISCUSSION.md before writing tests.
 - Symlink verification (files in `~/.claude/agents/`) is a manual/scripted
@@ -14,9 +15,9 @@
   acceptance criteria (what an external observer checks). These are related
   but distinct outputs.
 
-### Phase 6 AC structure (for reference in future phases)
+### AC structure for agent definition file phases
 
-For agent definition file phases:
+When a phase produces agent definition files, the standard AC set is:
 - AC1: file existence (path + non-empty)
 - AC2: required YAML frontmatter fields with constraints
 - AC3: description contains spawn-trigger language (EM selection surface)
@@ -25,9 +26,3 @@ For agent definition file phases:
 - AC6: memory file section with correct path, permission statement, trigger
 - AC7: symlinks in `~/.claude/agents/` resolve (manual check)
 - AC8: no regressions in pre-phase tests
-
-### Test suite baseline (end of Phase 5)
-
-126 tests passing, 0 failures. Verified 2026-04-04.
-Files: test_agent_prompt_assessment.py, test_continue.py,
-test_feature_extractor.py, test_prompts.py, test_state.py.
