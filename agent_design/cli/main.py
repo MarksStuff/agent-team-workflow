@@ -9,7 +9,9 @@ from agent_design.cli.commands.diff import diff
 from agent_design.cli.commands.feedback import feedback
 from agent_design.cli.commands.impl import impl
 from agent_design.cli.commands.init import init
+from agent_design.cli.commands.remember import remember
 from agent_design.cli.commands.resume import resume
+from agent_design.cli.commands.review_feedback import review_feedback
 from agent_design.cli.commands.rollback import rollback
 from agent_design.cli.commands.status import status
 
@@ -36,6 +38,8 @@ cli.add_command(rollback)
 cli.add_command(diff)
 cli.add_command(resume)
 cli.add_command(close)
+cli.add_command(remember)
+cli.add_command(review_feedback)
 
 
 if __name__ == "__main__":

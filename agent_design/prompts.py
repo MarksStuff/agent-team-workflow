@@ -169,3 +169,90 @@ def build_continue_start(feature_request: str, available_specialists: str | None
     """
     specialists = available_specialists if available_specialists is not None else get_available_specialists()
     return _CONTINUE_TASK.format(feature_request=feature_request, available_specialists=specialists).strip()
+
+
+_REMEMBER_MESSAGE = """\
+A human correction or override has been recorded.
+
+Correction: {correction}
+Project: {project_slug}
+Date: {date}
+
+Each agent: read this note. If it is relevant to your role and decisions you
+might make, update your own memory file at ~/.claude/agent-memory/<your-name>.md.
+Use the established format (## Corrections & Overrides, YYYY-MM-DD [project]).
+If it is not relevant to you, do nothing.
+
+After updates are complete, each agent that made a change reports: what they
+wrote and why.
+
+The Retrospective Facilitator verifies: at least one agent must have updated
+their memory. If no agent self-updated after a non-trivial correction, the
+Facilitator flags it and prompts the most relevant agent to reconsider.
+"""
+
+_REVIEW_FEEDBACK_MESSAGE = """\
+A GitHub pull request review has been completed. The reviewer's comments are
+provided below.
+
+PR: {pr_url}
+
+PR Review Comments:
+{pr_comments}
+
+Each agent: read all comments above. If any comment is relevant to your role
+and decisions you might make in future sessions, update your own memory file
+at ~/.claude/agent-memory/<your-name>.md.
+Use the established format (## Corrections & Overrides, YYYY-MM-DD [project]).
+If nothing is relevant to you, do nothing.
+
+After updates are complete, each agent that made a change reports: what they
+wrote and why.
+
+The Retrospective Facilitator verifies: at least one agent must have updated
+their memory. If no agent self-updated, the Facilitator flags it.
+"""
+
+
+def build_remember_start(
+    correction: str, project_slug: str, date: str, available_specialists: str | None = None
+) -> str:
+    """Build the start message for a remember session.
+
+    Broadcasts a human correction to all core agents in a --print session.
+    Each agent reads it and self-updates their memory file if relevant.
+
+    Args:
+        correction: The human correction or override text
+        project_slug: Short identifier for the project (e.g., 'news-reader')
+        date: Date string for the correction (e.g., '2026-04-04')
+        available_specialists: Unused; kept for API consistency (optional)
+
+    Returns:
+        Start message string for run_print_team()
+    """
+    return _REMEMBER_MESSAGE.format(
+        correction=correction,
+        project_slug=project_slug,
+        date=date,
+    ).strip()
+
+
+def build_review_feedback_start(pr_comments: str, pr_url: str, available_specialists: str | None = None) -> str:
+    """Build the start message for a review-feedback session.
+
+    Broadcasts PR review comments to all core agents in a --print session.
+    Each agent reads and self-updates their memory file if relevant.
+
+    Args:
+        pr_comments: Formatted string of PR review comments
+        pr_url: GitHub PR URL for context
+        available_specialists: Unused; kept for API consistency (optional)
+
+    Returns:
+        Start message string for run_print_team()
+    """
+    return _REVIEW_FEEDBACK_MESSAGE.format(
+        pr_comments=pr_comments,
+        pr_url=pr_url,
+    ).strip()
