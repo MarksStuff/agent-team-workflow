@@ -41,7 +41,6 @@ def status(repo_path: Path) -> None:
         table.add_column("Value")
 
         table.add_row("Feature", state.feature_slug)
-        table.add_row("Phase", state.phase)
         table.add_row("Discussion Turns", str(state.discussion_turns))
         table.add_row("Target Repo", state.target_repo)
         table.add_row("Baseline Commit", state.baseline_commit or "N/A")

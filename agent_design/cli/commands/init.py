@@ -101,8 +101,7 @@ def init(
         existing = load_round_state(worktree_path)
         console.print(
             Panel(
-                f"Found existing session: [cyan]{existing.feature_slug}[/cyan] "
-                f"(phase: {existing.phase})\n"
+                f"Found existing session: [cyan]{existing.feature_slug}[/cyan]\n"
                 "Use [bold]agent-design resume[/bold] to continue, or delete "
                 ".agent-design manually to start fresh.",
                 title="[yellow]Session already exists[/yellow]",
@@ -121,7 +120,6 @@ def init(
         feature_slug=slug,
         feature_request=feature_request,
         target_repo=str(repo_path),
-        phase="baseline",
     )
     save_round_state(worktree_path, state)
     checkpoint(worktree_path, "init: session created", "chk-init")
@@ -133,7 +131,6 @@ def init(
         (worktree_path / "DESIGN.md").write_text(design_doc.read_text())
         (worktree_path / "DISCUSSION.md").write_text("# Design Discussion\n")
         (worktree_path / "DECISIONS.md").write_text("# Design Decisions\n")
-        state.phase = "open_discussion"
         state.completed.extend(["baseline", "initial_draft"])
         save_round_state(worktree_path, state)
         checkpoint(worktree_path, "init: bootstrapped from existing design doc", "chk-initial-draft")
@@ -164,7 +161,6 @@ def init(
         console.print(f"[red]✗ Stage 0 failed (exit {rc})[/red]")
         raise click.Abort() from None
 
-    state.phase = "initial_draft"
     state.completed.append("baseline")
     save_round_state(worktree_path, state)
     checkpoint(worktree_path, "stage 0: baseline analysis complete", "chk-baseline")
@@ -182,7 +178,6 @@ def init(
         console.print(f"[red]✗ Stage 1 failed (exit {rc})[/red]")
         raise click.Abort() from None
 
-    state.phase = "open_discussion"
     state.completed.append("initial_draft")
     save_round_state(worktree_path, state)
     checkpoint(worktree_path, "stage 1: initial design draft complete", "chk-initial-draft")

@@ -36,7 +36,6 @@ def resume(repo_path: Path) -> None:
 
         console.print("\n[bold green]✓ Session found![/bold green]")
         console.print(f"Feature: [bold]{state.feature_slug}[/bold]")
-        console.print(f"Phase: [cyan]{state.phase}[/cyan]")
         console.print(f"Discussion turns: {state.discussion_turns}")
 
         console.print("\n[dim]Use 'agent-design status' for full details[/dim]")

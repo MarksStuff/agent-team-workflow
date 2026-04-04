@@ -66,36 +66,21 @@ Write all three files now. Do not ask for confirmation.
 # Assembled from agent identities + stage task by the build_* functions.
 # =============================================================================
 
-_STAGE_2_TASK = """\
+_CONTINUE_TASK = """\
 Feature: {feature_request}
 
-Task: run a design review for the above feature.
+Task: continue the design workflow for the above feature.
 
 Available specialists: {available_specialists}
 
-Spawn the specialists most relevant to this feature.
+Read the worktree before your first response:
+- BASELINE.md — codebase context
+- DESIGN.md — current draft (if it exists)
+- DISCUSSION.md — prior team discussion
+- feedback/ — any human feedback not yet incorporated
 
-Files in this directory:
-- BASELINE.md — codebase analysis
-- DESIGN.md — initial draft to review and refine
-- DISCUSSION.md — shared discussion thread
-- DECISIONS.md — resolved decisions and deadlocks
-"""
-
-_STAGE_3_TASK = """\
-Feature: {feature_request}
-
-Task: incorporate human feedback (round {round_num}).
-
-Available specialists: {available_specialists}
-
-Human feedback is in: feedback/human-round-{round_num}.md
-
-Files in this directory:
-- BASELINE.md — codebase analysis
-- DESIGN.md — current design
-- DISCUSSION.md — prior discussion
-- DECISIONS.md — prior decisions
+Based on what you read, decide what phase this session covers and tell the
+team in your opening message. Do not wait to be told.
 """
 
 _IMPL_START_MESSAGE = """\
@@ -175,15 +160,12 @@ def build_impl_start(feature_request: str, is_resume: bool = False, available_sp
     return template.format(feature_request=feature_request, available_specialists=specialists).strip()
 
 
-def build_review_start(feature_request: str, available_specialists: str | None = None) -> str:
-    """Build the Eng Manager start message for stage 2 (design review)."""
-    specialists = available_specialists if available_specialists is not None else get_available_specialists()
-    return _STAGE_2_TASK.format(feature_request=feature_request, available_specialists=specialists).strip()
+def build_continue_start(feature_request: str, available_specialists: str | None = None) -> str:
+    """Build the Eng Manager start message for a continue session.
 
-
-def build_feedback_start(round_num: int, feature_request: str = "", available_specialists: str | None = None) -> str:
-    """Build the Eng Manager start message for stage 3+ (feedback integration)."""
+    Replaces build_review_start and build_feedback_start. The EM reads the
+    worktree and infers what phase applies; this function emits a generic
+    prompt with no hardcoded stage or round assumptions.
+    """
     specialists = available_specialists if available_specialists is not None else get_available_specialists()
-    return _STAGE_3_TASK.format(
-        round_num=round_num, feature_request=feature_request, available_specialists=specialists
-    ).strip()
+    return _CONTINUE_TASK.format(feature_request=feature_request, available_specialists=specialists).strip()

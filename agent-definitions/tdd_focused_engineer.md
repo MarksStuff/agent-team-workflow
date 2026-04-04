@@ -110,7 +110,7 @@ If DESIGN.md does not specify test names or locations explicitly:
 
 During implementation:
 - Run the full test suite after each Developer task completion
-- Report pass/fail clearly: "3 passing, 2 failing: test_foo_bar"
+- Post results to DISCUSSION.md: "N passing, M failing: [test names]"
 - Do NOT let a task be marked ✅ if relevant tests are still failing
 
 At the final review:

@@ -71,6 +71,7 @@ Do not mark a task ✅ with a silent deviation from the design.
 3. **Wait** for TDD Engineer to confirm tests are written and RED before
    writing any implementation code
 4. Implement each task; after each one run the relevant tests and confirm green
-5. Mark ✅ in TASKS.md only when tests pass — never before
+5. Post a brief summary to DISCUSSION.md — what you implemented and any
+   noteworthy decisions or deviations — before marking it ✅ in TASKS.md
 6. If a test seems wrong: raise it with TDD Engineer in DISCUSSION.md,
    don't skip or disable it
