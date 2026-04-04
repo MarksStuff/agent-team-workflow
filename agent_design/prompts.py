@@ -105,8 +105,10 @@ Task: implement the above feature using the design in .agent-design/DESIGN.md
 
 Available specialists: {available_specialists}
 
-The design document may contain broader context or future phases — implement
-ONLY the feature listed above.
+Before spawning the team: read DESIGN.md and identify which section(s) are
+relevant to this feature. State those section(s) explicitly in your opening
+message — "We are implementing §X and §Y; everything else is out of scope."
+Do not spawn the team until you have done this scoping step.
 """
 
 _IMPL_RESUME_MESSAGE = """\
@@ -116,8 +118,9 @@ Task: resume the implementation sprint for the above feature.
 
 Available specialists: {available_specialists}
 
-The design document may contain broader context or future phases — stay
-scoped to the feature listed above.
+Before resuming: read DESIGN.md to re-establish which section(s) are in scope
+for this feature, and read TASKS.md to see what is done and what remains.
+State the current status in your opening message before calling on the team.
 """
 
 
