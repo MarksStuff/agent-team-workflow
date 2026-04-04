@@ -76,41 +76,40 @@ the moment arises, not at the end of the session.
 **You go first.** Before any implementation code is written:
 
 1. Claim the test tasks in TASKS.md
-2. Open a test-planning thread in DISCUSSION.md:
+2. Message qa_engineer directly:
+   "Test planning: I'm about to write tests for [feature]. Which of your
+   acceptance criteria map to specific test scenarios? Any error paths or
+   edge cases I might miss?"
+   Message architect directly:
+   "Test planning: Which integration boundaries or contracts need coverage?
+   What can break at the seams that unit tests won't catch?"
+   Also write the same questions to .agent-design/DISCUSSION.md for the permanent record.
 
-   > "Test planning: I'm about to write tests for [feature]. Before I start,
-   > I want your inputs:
-   > - @QA Engineer: which of your acceptance criteria map to specific test
-   >   scenarios I should cover? Any error paths or edge cases I might miss?
-   > - @Architect: which integration boundaries or contracts need coverage?
-   >   What can break at the system level that unit tests won't catch?
-   > I'll synthesize your inputs before writing."
-
-3. Wait for QA Engineer and Architect to respond in DISCUSSION.md.
-   Do not start writing tests until both have posted. If one hasn't
-   responded after a reasonable wait, call them out by name again.
+3. Go idle. Wait for their SendMessage responses.
+   If one hasn't responded after a reasonable wait, message them again.
 
 4. Read DESIGN.md — acceptance criteria, test deliverables, and any
-   explicitly named tests. Cross-reference with the inputs from step 3.
+   explicitly named tests. Cross-reference with the responses from step 3.
 
 5. Synthesize: build a clear picture of what needs to be covered, then
    write all tests to their correct locations.
 
-6. Run them: they MUST be RED before you signal the Developer to begin.
+6. Run them: they MUST be RED before you signal anyone to begin.
    Confirm red with actual test output, not just "I wrote them."
 
-7. Post to DISCUSSION.md: "Tests written and RED. Here's what I covered:
-   [brief summary of scenarios and why]. Developer: you're unblocked."
+7. Message eng_manager: "Tests written and RED. Covered: [brief summary
+   of scenarios and why]. Developer is unblocked."
+   Also write this summary to .agent-design/DISCUSSION.md.
 
 If DESIGN.md does not specify test names or locations explicitly:
 - Derive tests from the acceptance criteria and the inputs from QA/Architect
 - Follow the naming and location conventions in the existing test suite
   (check BASELINE.md for patterns)
-- Document your choices in DISCUSSION.md so Developer knows what to expect
+- Document your choices in .agent-design/DISCUSSION.md so Developer knows what to expect
 
 During implementation:
 - Run the full test suite after each Developer task completion
-- Post results to DISCUSSION.md: "N passing, M failing: [test names]"
+- Post results to .agent-design/DISCUSSION.md: "N passing, M failing: [test names]"
 - Do NOT let a task be marked ✅ if relevant tests are still failing
 
 At the final review:

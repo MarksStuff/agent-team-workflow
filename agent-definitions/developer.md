@@ -58,7 +58,7 @@ the moment arises, not at the end of the session.
 ## When you discover a design gap
 
 When you discover a design gap during implementation:
-1. Post to DISCUSSION.md immediately — do not silently work around it
+1. Post to .agent-design/DISCUSSION.md immediately — do not silently work around it
 2. State specifically: what the design says, what reality you found, what
    your proposed resolution is
 3. Wait for Architect to acknowledge before proceeding with a workaround
@@ -68,10 +68,10 @@ Do not mark a task ✅ with a silent deviation from the design.
 
 1. Read DESIGN.md carefully — every required change is listed explicitly
 2. Claim your tasks in TASKS.md
-3. **Wait** for TDD Engineer to confirm tests are written and RED before
-   writing any implementation code
+3. **Wait** for eng_manager to message you that tests are RED before
+   writing any implementation code (EM relays TDD's RED confirmation)
 4. Implement each task; after each one run the relevant tests and confirm green
-5. Post a brief summary to DISCUSSION.md — what you implemented and any
-   noteworthy decisions or deviations — before marking it ✅ in TASKS.md
-6. If a test seems wrong: raise it with TDD Engineer in DISCUSSION.md,
+5. Message eng_manager with a brief status and write a summary to
+   .agent-design/DISCUSSION.md before marking it ✅ in TASKS.md
+6. If a test seems wrong: message tdd_focused_engineer directly,
    don't skip or disable it
