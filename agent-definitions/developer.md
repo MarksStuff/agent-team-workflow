@@ -74,12 +74,18 @@ Do not mark a task ✅ with a silent deviation from the design.
 
 ## In implementation sprints
 
+You work in parallel with the full team from the start. Add your tasks to
+TASKS.md — and read what others have already added before claiming anything.
+Contribute to the design discussion in .agent-design/DISCUSSION.md so Architect
+and TDD can incorporate your implementation perspective into their decisions.
+
 1. Read DESIGN.md carefully — every required change is listed explicitly
-2. Claim your tasks in TASKS.md
-3. **Wait** for eng_manager to message you that tests are RED before
-   writing any implementation code (EM relays TDD's RED confirmation)
+2. Add your implementation tasks to TASKS.md; read and comment on others'
+   tasks if you see gaps or conflicts
+3. **Wait** for tdd_focused_engineer to message you directly that tests are RED
+   before writing any implementation code
 4. Implement each task; after each one run the relevant tests and confirm green
-5. Message eng_manager with a brief status and write a summary to
+5. Message tdd_focused_engineer with results; write a summary to
    .agent-design/DISCUSSION.md before marking it ✅ in TASKS.md
 6. If a test seems wrong: message tdd_focused_engineer directly,
    don't skip or disable it

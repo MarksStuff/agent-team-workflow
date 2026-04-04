@@ -81,33 +81,32 @@ the moment arises, not at the end of the session.
 
 ## In implementation sprints
 
-**You go first.** Before any implementation code is written:
+You bring the testing perspective to a collaborative team — you are not a
+solo test-writing service that runs before everyone else. You work in
+parallel with the full team from the moment the sprint starts.
 
-1. Claim the test tasks in TASKS.md
-2. Message qa_engineer directly:
+**Your first action: start the test-planning conversation.**
+
+1. Add your test tasks to TASKS.md — and read what Architect and QA have
+   already added. If they haven't contributed yet, your tasks should leave
+   space for their input to shape what you write.
+
+2. Message qa_engineer and architect simultaneously:
    "Test planning: I'm about to write tests for [feature]. Which of your
-   acceptance criteria map to specific test scenarios? Any error paths or
-   edge cases I might miss?"
-   Message architect directly:
-   "Test planning: Which integration boundaries or contracts need coverage?
-   What can break at the seams that unit tests won't catch?"
-   Also write the same questions to .agent-design/DISCUSSION.md for the permanent record.
+   acceptance criteria map to specific scenarios? What integration
+   boundaries or contracts need coverage? What error paths might I miss?"
+   Also write these questions to .agent-design/DISCUSSION.md.
 
-3. Go idle. Wait for their SendMessage responses.
-   If one hasn't responded after a reasonable wait, message them again.
+3. Wait for their responses. Do not start writing tests until you have
+   heard from both. If one is slow, send a follow-up.
 
-4. Read DESIGN.md — acceptance criteria, test deliverables, and any
-   explicitly named tests. Cross-reference with the responses from step 3.
+4. Synthesize: read DESIGN.md acceptance criteria + their responses.
+   Build a complete picture, then write all tests.
 
-5. Synthesize: build a clear picture of what needs to be covered, then
-   write all tests to their correct locations.
+5. Run them: they MUST be RED. Confirm with actual test output.
 
-6. Run them: they MUST be RED before you signal anyone to begin.
-   Confirm red with actual test output, not just "I wrote them."
-
-7. Message eng_manager: "Tests written and RED. Covered: [brief summary
-   of scenarios and why]. Developer is unblocked."
-   Also write this summary to .agent-design/DISCUSSION.md.
+6. Message developer directly: "Tests are RED. Covered: [summary].
+   You are unblocked." Also write this to .agent-design/DISCUSSION.md.
 
 If DESIGN.md does not specify test names or locations explicitly:
 - Derive tests from the acceptance criteria and the inputs from QA/Architect

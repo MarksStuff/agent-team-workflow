@@ -578,3 +578,317 @@ def test_build_review_feedback_start_does_not_take_date() -> None:
             pr_url="https://github.com/o/r/pull/1",
             date="2026-04-04",
         )
+
+
+# ---------------------------------------------------------------------------
+# build_retro_start — Phase 8
+#
+# Architect contract (DISCUSSION.md):
+#   build_retro_start(
+#       project_slug: str,
+#       date: str,
+#       discussion_path: str,
+#       tasks_path: str,
+#       decisions_path: str,
+#       available_specialists: str | None = None,
+#   ) -> str
+#
+# Takes paths (not file content) — agents read files themselves via --add-dir.
+#
+# Required output tokens:
+# 1. project_slug appears
+# 2. date appears
+# 3. discussion_path appears
+# 4. tasks_path appears
+# 5. decisions_path appears
+# 6. Instruction to produce RETRO.md
+# 7. Prompt-suggestion format [PS-N] mentioned
+# ---------------------------------------------------------------------------
+
+
+def test_build_retro_start_is_importable() -> None:
+    """build_retro_start is importable from agent_design.prompts (Phase 8)."""
+    from agent_design.prompts import build_retro_start  # noqa: F401
+
+
+def test_build_retro_start_returns_non_empty_string() -> None:
+    """Returns a non-empty string for valid input."""
+    from agent_design.prompts import build_retro_start
+
+    result = build_retro_start(
+        project_slug="news-reader",
+        date="2026-04-04",
+        discussion_path="/repo/.agent-design/DISCUSSION.md",
+        tasks_path="/repo/TASKS.md",
+        decisions_path="/repo/.agent-design/DECISIONS.md",
+    )
+    assert isinstance(result, str)
+    assert len(result) > 0
+
+
+def test_build_retro_start_contains_project_slug() -> None:
+    """Token 1: returned string includes the project_slug."""
+    from agent_design.prompts import build_retro_start
+
+    result = build_retro_start(
+        project_slug="my-feature",
+        date="2026-04-04",
+        discussion_path="/repo/.agent-design/DISCUSSION.md",
+        tasks_path="/repo/TASKS.md",
+        decisions_path="/repo/.agent-design/DECISIONS.md",
+    )
+    assert "my-feature" in result
+
+
+def test_build_retro_start_contains_date() -> None:
+    """Token 2: returned string includes the date."""
+    from agent_design.prompts import build_retro_start
+
+    result = build_retro_start(
+        project_slug="my-feature",
+        date="2026-04-04",
+        discussion_path="/repo/.agent-design/DISCUSSION.md",
+        tasks_path="/repo/TASKS.md",
+        decisions_path="/repo/.agent-design/DECISIONS.md",
+    )
+    assert "2026-04-04" in result
+
+
+def test_build_retro_start_contains_discussion_path() -> None:
+    """Token 3: returned string includes the discussion_path."""
+    from agent_design.prompts import build_retro_start
+
+    result = build_retro_start(
+        project_slug="my-feature",
+        date="2026-04-04",
+        discussion_path="/some/repo/.agent-design/DISCUSSION.md",
+        tasks_path="/some/repo/TASKS.md",
+        decisions_path="/some/repo/.agent-design/DECISIONS.md",
+    )
+    assert "/some/repo/.agent-design/DISCUSSION.md" in result
+
+
+def test_build_retro_start_contains_tasks_path() -> None:
+    """Token 4: returned string includes the tasks_path."""
+    from agent_design.prompts import build_retro_start
+
+    result = build_retro_start(
+        project_slug="my-feature",
+        date="2026-04-04",
+        discussion_path="/some/repo/.agent-design/DISCUSSION.md",
+        tasks_path="/some/repo/TASKS.md",
+        decisions_path="/some/repo/.agent-design/DECISIONS.md",
+    )
+    assert "/some/repo/TASKS.md" in result
+
+
+def test_build_retro_start_contains_decisions_path() -> None:
+    """Token 5: returned string includes the decisions_path."""
+    from agent_design.prompts import build_retro_start
+
+    result = build_retro_start(
+        project_slug="my-feature",
+        date="2026-04-04",
+        discussion_path="/some/repo/.agent-design/DISCUSSION.md",
+        tasks_path="/some/repo/TASKS.md",
+        decisions_path="/some/repo/.agent-design/DECISIONS.md",
+    )
+    assert "/some/repo/.agent-design/DECISIONS.md" in result
+
+
+def test_build_retro_start_instructs_retro_md_output() -> None:
+    """Token 6: returned string instructs the agent to produce RETRO.md."""
+    from agent_design.prompts import build_retro_start
+
+    result = build_retro_start(
+        project_slug="my-feature",
+        date="2026-04-04",
+        discussion_path="/repo/.agent-design/DISCUSSION.md",
+        tasks_path="/repo/TASKS.md",
+        decisions_path="/repo/.agent-design/DECISIONS.md",
+    )
+    assert "RETRO.md" in result
+
+
+def test_build_retro_start_mentions_prompt_suggestion_format() -> None:
+    """Token 7: returned string mentions [PS-N] prompt-suggestion format."""
+    from agent_design.prompts import build_retro_start
+
+    result = build_retro_start(
+        project_slug="my-feature",
+        date="2026-04-04",
+        discussion_path="/repo/.agent-design/DISCUSSION.md",
+        tasks_path="/repo/TASKS.md",
+        decisions_path="/repo/.agent-design/DECISIONS.md",
+    )
+    assert "[PS-" in result
+
+
+def test_build_retro_start_accepts_available_specialists_kwarg() -> None:
+    """build_retro_start accepts optional available_specialists parameter."""
+    from agent_design.prompts import build_retro_start
+
+    result = build_retro_start(
+        project_slug="my-feature",
+        date="2026-04-04",
+        discussion_path="/repo/.agent-design/DISCUSSION.md",
+        tasks_path="/repo/TASKS.md",
+        decisions_path="/repo/.agent-design/DECISIONS.md",
+        available_specialists="architect, developer",
+    )
+    assert isinstance(result, str)
+
+
+def test_build_retro_start_does_not_take_file_content() -> None:
+    """build_retro_start signature does not accept content kwargs.
+
+    The Architect contract is clear: paths are passed, not file content.
+    Passing 'discussion_content' as a kwarg must raise TypeError.
+    """
+    from agent_design.prompts import build_retro_start
+
+    with pytest.raises(TypeError):
+        build_retro_start(  # type: ignore[call-arg]
+            project_slug="my-feature",
+            date="2026-04-04",
+            discussion_path="/repo/.agent-design/DISCUSSION.md",
+            tasks_path="/repo/TASKS.md",
+            decisions_path="/repo/.agent-design/DECISIONS.md",
+            discussion_content="some content",
+        )
+
+
+def test_build_retro_start_none_tasks_path_does_not_raise() -> None:
+    """build_retro_start handles None tasks_path gracefully (TASKS.md may not exist)."""
+    from agent_design.prompts import build_retro_start
+
+    result = build_retro_start(
+        project_slug="my-feature",
+        date="2026-04-04",
+        discussion_path="/repo/.agent-design/DISCUSSION.md",
+        tasks_path=None,  # type: ignore[arg-type]
+        decisions_path="/repo/.agent-design/DECISIONS.md",
+    )
+    assert isinstance(result, str)
+
+
+def test_build_retro_start_none_decisions_path_does_not_raise() -> None:
+    """build_retro_start handles None decisions_path gracefully (DECISIONS.md may not exist)."""
+    from agent_design.prompts import build_retro_start
+
+    result = build_retro_start(
+        project_slug="my-feature",
+        date="2026-04-04",
+        discussion_path="/repo/.agent-design/DISCUSSION.md",
+        tasks_path="/repo/TASKS.md",
+        decisions_path=None,  # type: ignore[arg-type]
+    )
+    assert isinstance(result, str)
+
+
+# ---------------------------------------------------------------------------
+# build_apply_suggestion_start — Phase 8
+#
+# Architect contract (DISCUSSION.md):
+#   build_apply_suggestion_start(
+#       suggestion_id: str,
+#       suggestion_text: str,
+#       agents_dir: str,
+#   ) -> str
+#
+# The command layer parses RETRO.md and extracts suggestion_text before calling
+# this builder. The builder receives already-parsed text — no file I/O here.
+#
+# Required output tokens:
+# 1. suggestion_id appears (e.g. "PS-1")
+# 2. suggestion_text appears verbatim
+# 3. agents_dir path appears
+# 4. Instruction to edit the agent definition file
+# ---------------------------------------------------------------------------
+
+
+def test_build_apply_suggestion_start_is_importable() -> None:
+    """build_apply_suggestion_start is importable from agent_design.prompts (Phase 8)."""
+    from agent_design.prompts import build_apply_suggestion_start  # noqa: F401
+
+
+def test_build_apply_suggestion_start_returns_non_empty_string() -> None:
+    """Returns a non-empty string for valid input."""
+    from agent_design.prompts import build_apply_suggestion_start
+
+    result = build_apply_suggestion_start(
+        suggestion_id="PS-1",
+        suggestion_text='architect.md: add "check BASELINE.md before proposing infrastructure"',
+        agents_dir="/Users/mark/.claude/agents",
+    )
+    assert isinstance(result, str)
+    assert len(result) > 0
+
+
+def test_build_apply_suggestion_start_contains_suggestion_id() -> None:
+    """Token 1: returned string includes the suggestion_id."""
+    from agent_design.prompts import build_apply_suggestion_start
+
+    result = build_apply_suggestion_start(
+        suggestion_id="PS-3",
+        suggestion_text="some suggestion text",
+        agents_dir="/Users/mark/.claude/agents",
+    )
+    assert "PS-3" in result
+
+
+def test_build_apply_suggestion_start_contains_suggestion_text() -> None:
+    """Token 2: returned string includes the suggestion_text verbatim."""
+    from agent_design.prompts import build_apply_suggestion_start
+
+    suggestion = 'architect.md: add "always read CLAUDE.md first"'
+    result = build_apply_suggestion_start(
+        suggestion_id="PS-1",
+        suggestion_text=suggestion,
+        agents_dir="/Users/mark/.claude/agents",
+    )
+    assert suggestion in result
+
+
+def test_build_apply_suggestion_start_contains_agents_dir() -> None:
+    """Token 3: returned string includes the agents_dir path."""
+    from agent_design.prompts import build_apply_suggestion_start
+
+    agents_dir = "/Users/mark/.claude/agents"
+    result = build_apply_suggestion_start(
+        suggestion_id="PS-1",
+        suggestion_text="some suggestion",
+        agents_dir=agents_dir,
+    )
+    assert agents_dir in result
+
+
+def test_build_apply_suggestion_start_instructs_file_edit() -> None:
+    """Token 4: returned string instructs the agent to edit the agent definition file."""
+    from agent_design.prompts import build_apply_suggestion_start
+
+    result = build_apply_suggestion_start(
+        suggestion_id="PS-1",
+        suggestion_text="some suggestion",
+        agents_dir="/Users/mark/.claude/agents",
+    )
+    lowered = result.lower()
+    # Must reference editing/writing to the file
+    assert "edit" in lowered or "write" in lowered or "update" in lowered or "apply" in lowered
+
+
+def test_build_apply_suggestion_start_does_not_accept_available_specialists() -> None:
+    """build_apply_suggestion_start does NOT accept available_specialists.
+
+    Architect contract: signature is (suggestion_id, suggestion_text, agents_dir).
+    This is a solo session — no team, no specialists list.
+    """
+    from agent_design.prompts import build_apply_suggestion_start
+
+    with pytest.raises(TypeError):
+        build_apply_suggestion_start(  # type: ignore[call-arg]
+            suggestion_id="PS-1",
+            suggestion_text="some suggestion",
+            agents_dir="/Users/mark/.claude/agents",
+            available_specialists="architect",
+        )

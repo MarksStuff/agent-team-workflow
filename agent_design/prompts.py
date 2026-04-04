@@ -238,6 +238,94 @@ def build_remember_start(
     ).strip()
 
 
+def build_retro_start(
+    project_slug: str,
+    date: str,
+    discussion_path: str,
+    tasks_path: str | None,
+    decisions_path: str | None,
+    available_specialists: str | None = None,
+) -> str:
+    """Build the Eng Manager start message for a retrospective session.
+
+    Launches a --print multi-agent session where the Retrospective Facilitator
+    reads DISCUSSION.md, TASKS.md, and DECISIONS.md, identifies friction points,
+    tells each relevant agent what was observed, asks each to self-update their
+    memory file, verifies pickup, and produces RETRO.md.
+
+    Args:
+        project_slug: Short identifier for the project (e.g., 'news-reader')
+        date: Date string for the retrospective (e.g., '2026-04-04')
+        discussion_path: Absolute path to DISCUSSION.md (for inclusion in prompt)
+        tasks_path: Absolute path to TASKS.md (for inclusion in prompt), or None if absent
+        decisions_path: Absolute path to DECISIONS.md (for inclusion in prompt), or None if absent
+        available_specialists: Unused; kept for API consistency (optional)
+
+    Returns:
+        Start message string for run_print_team()
+    """
+    tasks_line = f"- Tasks:     {tasks_path}" if tasks_path is not None else "- Tasks:     (not present)"
+    decisions_line = f"- Decisions: {decisions_path}" if decisions_path is not None else "- Decisions: (not present)"
+
+    return f"""\
+Retrospective session for project: {project_slug}
+Date: {date}
+
+Read the following artefacts to understand what happened this sprint:
+- Discussion: {discussion_path}
+{tasks_line}
+{decisions_line}
+
+Your task:
+1. Identify friction points and patterns from the discussion and task board.
+2. For each agent involved in a friction point, tell them specifically what was observed.
+3. Ask each relevant agent to self-update their memory file at ~/.claude/agent-memory/<name>.md.
+4. Verify pickup: each agent that self-updated reports what they wrote and why.
+5. Produce RETRO.md in the current directory with the following structure:
+   - Project, date, What Went Well, Friction Points, Action Items
+   - A "Prompt Suggestions (pending human review)" section with entries formatted as:
+     - [PS-1] <agent-file>.md: <suggestion text>
+     - [PS-2] <agent-file>.md: <suggestion text>
+     (use [PS-N] tags for each suggestion)
+
+Write RETRO.md now. Do not ask for confirmation.""".strip()
+
+
+def build_apply_suggestion_start(
+    suggestion_id: str,
+    suggestion_text: str,
+    agents_dir: str,
+) -> str:
+    """Build the task prompt for an apply-suggestion session.
+
+    A --print single-agent (architect) session that reads the prompt suggestion
+    and edits the relevant agent definition file in agents_dir.
+
+    Args:
+        suggestion_id: Suggestion identifier as it appears in RETRO.md (e.g., 'PS-1')
+        suggestion_text: Full suggestion text extracted from RETRO.md
+        agents_dir: Absolute path to the agents directory (e.g., '/Users/foo/.claude/agents')
+
+    Returns:
+        Task prompt string for run_solo()
+    """
+    return f"""\
+Apply prompt suggestion {suggestion_id} to the relevant agent definition file.
+
+Suggestion text:
+{suggestion_text}
+
+Agents directory: {agents_dir}
+
+Instructions:
+1. Identify which agent definition file the suggestion refers to (the filename is in the suggestion text).
+2. Read the current content of that file from {agents_dir}/<agent-file>.md.
+3. Edit the agent definition file to incorporate the suggestion.
+4. Write the updated file back to {agents_dir}/<agent-file>.md.
+
+Apply the change now. Do not ask for confirmation.""".strip()
+
+
 def build_review_feedback_start(pr_comments: str, pr_url: str, available_specialists: str | None = None) -> str:
     """Build the start message for a review-feedback session.
 

@@ -1,36 +1,37 @@
-# TASKS.md — Phase 7: Memory Infrastructure
+# TASKS.md — Phase 8: Retrospective
 
 ## Scope
-§ "Human Intervention → Memory Update" + § "PR Feedback → Memory Update" + § "CLI Command Map"
+§ "The Retrospective" + § "Retrospective Facilitator" (Agent Roster) + § "CLI Command Map (V2)" retro and apply-suggestion entries + § "Implementation Phases — Phase 8"
 
-Two new commands:
-- `agent-design remember "<correction>"` — `--print` multi-agent session; each agent self-updates if relevant; Retrospective Facilitator verifies pickup
-- `agent-design review-feedback --pr <url>` — same pattern, using GitHub PR review comments fetched via `gh` CLI
+In scope:
+1. `agent-design retro` command (new file: agent_design/cli/commands/retro.py)
+2. `retrospective_facilitator.md` agent definition file (written to ~/.claude/agents/)
+3. `agent-design apply-suggestion` command (new file: agent_design/cli/commands/apply_suggestion.py)
+4. `build_retro_start()` and `build_apply_suggestion_start()` prompt builders in prompts.py
+5. Register both commands in agent_design/cli/main.py
+6. Tests for all of the above
 
-Supporting additions:
-- `run_print_team()` in `launcher.py` — `--print` session with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
-- `build_remember_start()` and `build_review_feedback_start()` in `prompts.py`
-- Both commands registered in `cli/main.py`
-
-Out of scope: Retrospective Facilitator agent definition, hooks, domain experts.
+Out of scope: hooks, domain experts, all other commands.
 
 ---
 
 | Task | Owner | Status |
 |---|---|---|
-| Review interface contracts for `run_print_team()`, `build_remember_start()`, `build_review_feedback_start()`, and both commands; flag any design gaps before implementation begins | Architect | ✅ done |
-| Define exact signatures and subprocess flag contract for `run_print_team()`, both `build_*` functions, and `_fetch_pr_comments()` | Architect | ✅ done |
-| Define acceptance criteria for `remember` and `review-feedback` commands (success paths, error paths, edge cases) | QA Engineer | ✅ done |
-| Write tests for `build_remember_start()` in `tests/test_prompts.py` (RED first) | TDD Focussed Engineer | ✅ done |
-| Write tests for `build_review_feedback_start()` in `tests/test_prompts.py` (RED first) | TDD Focussed Engineer | ✅ done |
-| Write tests for `run_print_team()` in `tests/test_launcher.py` (RED first) | TDD Focussed Engineer | ✅ done |
-| Write tests for `remember` CLI command in `tests/test_remember.py` (RED first) | TDD Focussed Engineer | ✅ done |
-| Write tests for `review_feedback` CLI command in `tests/test_review_feedback.py` (RED first) | TDD Focussed Engineer | ✅ done |
-| Write tests for `_fetch_pr_comments()` helper in isolation (no real `gh` subprocess) in `tests/test_review_feedback.py` | TDD Focussed Engineer | ✅ done |
-| Implement `run_print_team()` in `agent_design/launcher.py` | Developer | ✅ done |
-| Implement `build_remember_start()` and `build_review_feedback_start()` in `agent_design/prompts.py` | Developer | ✅ done |
-| Implement `agent_design/cli/commands/remember.py` | Developer | ✅ done |
-| Implement `agent_design/cli/commands/review_feedback.py` (including `gh` CLI fetch for PR comments) | Developer | ✅ done |
-| Wire `remember` and `review_feedback` commands into `agent_design/cli/main.py` | Developer | ✅ done |
-| Final acceptance review: verify both commands satisfy all acceptance criteria; confirm tests pass; LGTM or raise issues | QA Engineer | ⬜ unclaimed |
-| Final architecture review: confirm implementation matches design; no drift from design doc; LGTM or raise issues | Architect | ⬜ unclaimed |
+| **[ARCHITECT] Define interface contracts for `build_retro_start()` and `build_apply_suggestion_start()` (exact signatures, what each parameter carries)** | architect | ✅ done |
+| **[ARCHITECT] Define which launcher function each command uses (`run_print_team` vs `run_team` vs `run_solo`)** | architect | ✅ done |
+| **[ARCHITECT] Define `apply-suggestion` RETRO.md parsing contract (how suggestion ID maps to suggestion text)** | architect | ✅ done |
+| **[QA] Write acceptance criteria for `retro` command (success path, error paths, edge cases)** | qa_engineer | ✅ done |
+| **[QA] Write acceptance criteria for `apply-suggestion` command (success path, error paths, edge cases)** | qa_engineer | ✅ done |
+| **[TDD] Write tests for `build_retro_start()` and `build_apply_suggestion_start()` in tests/test_prompts.py (RED first)** | tdd_focussed_engineer | ✅ done |
+| **[TDD] Write tests for `agent-design retro` command in tests/test_retro.py (RED first)** | tdd_focussed_engineer | ✅ done |
+| **[TDD] Write tests for `agent-design apply-suggestion` command in tests/test_apply_suggestion.py (RED first)** | tdd_focussed_engineer | ✅ done |
+| **[TDD] Write tests for `retrospective_facilitator.md` agent definition in tests/test_retrospective_facilitator.py (RED first)** | tdd_focussed_engineer | ✅ done |
+| **[TDD] Confirm all tests are RED; unblock Developer** | tdd_focussed_engineer | ✅ done |
+| **[DEV] Implement `build_retro_start()` in agent_design/prompts.py** | developer | ✅ done |
+| **[DEV] Implement `build_apply_suggestion_start()` in agent_design/prompts.py** | developer | ✅ done |
+| **[DEV] Implement `agent_design/cli/commands/retro.py`** | developer | ✅ done |
+| **[DEV] Implement `agent_design/cli/commands/apply_suggestion.py`** | developer | ✅ done |
+| **[DEV] Register `retro` and `apply-suggestion` commands in `agent_design/cli/main.py`** | developer | ✅ done |
+| **[DEV] Write `retrospective_facilitator.md` agent definition to `~/.claude/agents/`** | developer | ✅ done |
+| **[QA] Final acceptance review: verify both commands satisfy all acceptance criteria; confirm tests pass** | qa_engineer | ✅ done |
+| **[ARCHITECT] Final architecture review: confirm implementation matches design; no drift** | architect | ✅ done |
