@@ -957,3 +957,108 @@ def test_build_retro_start_labels_observation_as_first_class_input() -> None:
         human_observation="Something I noticed.",
     )
     assert "Human observation" in result
+
+
+# ---------------------------------------------------------------------------
+# build_fix_ci_start — Phase 9 (CI gate)
+#
+# Architect contract:
+#   build_fix_ci_start(
+#       ci_failures: str,
+#       pr_url: str,
+#       available_specialists: str | None = None,
+#   ) -> str
+#
+# Required output tokens:
+# 1. pr_url appears
+# 2. ci_failures text appears verbatim
+# 3. Instruction to fix ONLY what CI reports as failing
+# 4. Instruction to run tests locally to confirm green
+# ---------------------------------------------------------------------------
+
+
+def test_build_fix_ci_start_is_importable() -> None:
+    """build_fix_ci_start is importable from agent_design.prompts."""
+    from agent_design.prompts import build_fix_ci_start  # noqa: F401
+
+
+def test_build_fix_ci_start_returns_non_empty_string() -> None:
+    """Returns a non-empty string for valid input."""
+    from agent_design.prompts import build_fix_ci_start
+
+    result = build_fix_ci_start(
+        ci_failures="Failing checks:\n  • lint",
+        pr_url="https://github.com/o/r/pull/1",
+    )
+    assert isinstance(result, str)
+    assert len(result) > 0
+
+
+def test_build_fix_ci_start_contains_pr_url() -> None:
+    """Token 1: returned string includes the PR URL."""
+    from agent_design.prompts import build_fix_ci_start
+
+    pr_url = "https://github.com/owner/repo/pull/42"
+    result = build_fix_ci_start(
+        ci_failures="some failure output",
+        pr_url=pr_url,
+    )
+    assert pr_url in result
+
+
+def test_build_fix_ci_start_contains_ci_failures() -> None:
+    """Token 2: returned string includes the CI failures text verbatim."""
+    from agent_design.prompts import build_fix_ci_start
+
+    failures = "Failing checks:\n  • lint\n  • typecheck"
+    result = build_fix_ci_start(
+        ci_failures=failures,
+        pr_url="https://github.com/o/r/pull/1",
+    )
+    assert failures in result
+
+
+def test_build_fix_ci_start_instructs_fix_only_failing() -> None:
+    """Token 3: returned string instructs the team to fix only failing checks."""
+    from agent_design.prompts import build_fix_ci_start
+
+    result = build_fix_ci_start(
+        ci_failures="some failure",
+        pr_url="https://github.com/o/r/pull/1",
+    )
+    lowered = result.lower()
+    assert "fail" in lowered
+    assert "only" in lowered or "do not refactor" in lowered or "unrelated" in lowered
+
+
+def test_build_fix_ci_start_instructs_run_tests_locally() -> None:
+    """Token 4: returned string instructs running tests locally to confirm green."""
+    from agent_design.prompts import build_fix_ci_start
+
+    result = build_fix_ci_start(
+        ci_failures="some failure",
+        pr_url="https://github.com/o/r/pull/1",
+    )
+    lowered = result.lower()
+    assert "test" in lowered
+    assert "local" in lowered or "confirm" in lowered or "pass" in lowered
+
+
+def test_build_fix_ci_start_accepts_available_specialists_kwarg() -> None:
+    """build_fix_ci_start accepts optional available_specialists parameter."""
+    from agent_design.prompts import build_fix_ci_start
+
+    result = build_fix_ci_start(
+        ci_failures="some failure",
+        pr_url="https://github.com/o/r/pull/1",
+        available_specialists="architect, developer",
+    )
+    assert isinstance(result, str)
+
+
+def test_build_fix_ci_start_empty_failures_does_not_raise() -> None:
+    """Empty ci_failures returns a string without raising."""
+    from agent_design.prompts import build_fix_ci_start
+
+    result = build_fix_ci_start(ci_failures="", pr_url="https://github.com/o/r/pull/1")
+    assert isinstance(result, str)

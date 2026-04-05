@@ -334,6 +334,43 @@ Instructions:
 Apply the change now. Do not ask for confirmation.""".strip()
 
 
+def build_fix_ci_start(
+    ci_failures: str,
+    pr_url: str,
+    available_specialists: str | None = None,
+) -> str:
+    """Build the Eng Manager start message for a fix-ci session.
+
+    Tells the team what CI failures were reported and instructs them to
+    fix only the failing checks.
+
+    Args:
+        ci_failures: Verbatim CI failure output
+        pr_url: GitHub PR URL
+        available_specialists: Comma-separated agent names (auto-detected if None)
+
+    Returns:
+        Start message string for run_team_in_repo()
+    """
+    specialists = available_specialists if available_specialists is not None else get_available_specialists()
+    return f"""\
+CI fix session for PR: {pr_url}
+
+Available specialists: {specialists}
+
+The following CI checks are failing:
+
+{ci_failures}
+
+Your task:
+1. Read the CI failure output above carefully.
+2. Fix ONLY what CI reports as failing — do not refactor unrelated code.
+3. Run tests locally to confirm they pass before finishing.
+4. Do not introduce new failures while fixing existing ones.
+
+Fix the failing checks now. Do not ask for confirmation.""".strip()
+
+
 def build_review_feedback_start(pr_comments: str, pr_url: str, available_specialists: str | None = None) -> str:
     """Build the start message for a review-feedback session.
 

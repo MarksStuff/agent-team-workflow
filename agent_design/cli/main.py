@@ -8,6 +8,7 @@ from agent_design.cli.commands.close import close
 from agent_design.cli.commands.continue_ import continue_cmd
 from agent_design.cli.commands.diff import diff
 from agent_design.cli.commands.feedback import feedback
+from agent_design.cli.commands.fix_ci import fix_ci
 from agent_design.cli.commands.impl import impl
 from agent_design.cli.commands.init import init
 from agent_design.cli.commands.remember import remember
@@ -44,6 +45,7 @@ cli.add_command(remember)
 cli.add_command(review_feedback)
 cli.add_command(retro)
 cli.add_command(apply_suggestion)
+cli.add_command(fix_ci, name="fix-ci")
 
 
 if __name__ == "__main__":

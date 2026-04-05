@@ -46,8 +46,11 @@ def _get_repo_name(repo_path: Path) -> str:
 
 def _commit_and_push(
     repo_path: Path, branch_name: str, slug: str, feature_request: str, design_pr_url: str | None
-) -> None:
-    """Commit all implementation changes as Roxy and push, then open a PR."""
+) -> str | None:
+    """Commit all implementation changes as Roxy and push, then open a PR.
+
+    Returns the PR URL if created successfully, or None otherwise.
+    """
     repo_env = os.environ.copy()
     if ROXY_GITHUB_TOKEN.exists():
         repo_env["GH_TOKEN"] = ROXY_GITHUB_TOKEN.read_text().strip()
@@ -68,7 +71,7 @@ def _commit_and_push(
     )
     if diff_result.returncode == 0:
         console.print("[yellow]⚠ No changes to commit — did the agents write any files?[/yellow]")
-        return
+        return None
 
     # Commit as Roxy
     _run_git_in_target(
@@ -111,10 +114,53 @@ def _commit_and_push(
         "main",
     )
     if gh_result.returncode == 0:
-        console.print(f"[green]✓[/green] PR created: {gh_result.stdout.strip()}")
+        pr_url = gh_result.stdout.strip()
+        console.print(f"[green]✓[/green] PR created: {pr_url}")
+        return pr_url
     else:
         console.print(f"[yellow]⚠ PR creation failed: {gh_result.stderr.strip()}[/yellow]")
         console.print(f"[dim]  Branch is pushed — create the PR manually from {branch_name}[/dim]")
+        return None
+
+
+def _check_ci_status(pr_url: str | None) -> None:
+    """Check CI status for the given PR URL and print a summary.
+
+    Does nothing if pr_url is None (e.g. PR creation failed earlier).
+    """
+    import json as _json
+
+    if pr_url is None:
+        return
+
+    result = _gh("pr", "checks", pr_url, "--json", "name,state,conclusion")
+    if result.returncode != 0:
+        console.print("[yellow]⚠ Could not fetch CI status — check the PR manually.[/yellow]")
+        return
+
+    try:
+        checks = _json.loads(result.stdout)
+    except _json.JSONDecodeError:
+        console.print("[yellow]⚠ Could not parse CI check output — check the PR manually.[/yellow]")
+        return
+
+    if not checks:
+        console.print("[yellow]⚠ CI checks are still running — use fix-ci if they fail.[/yellow]")
+        return
+
+    failing = [c["name"] for c in checks if c.get("conclusion") in ("FAILURE", "failure", "timed_out", "TIMED_OUT")]
+    pending = [
+        c for c in checks if c.get("state") in ("PENDING", "pending", "QUEUED", "queued", "IN_PROGRESS", "in_progress")
+    ]
+
+    if failing:
+        console.print("[red]✗ CI failed — run 'agent-design fix-ci' to fix.[/red]")
+        for name in failing:
+            console.print(f"[red]  • {name}[/red]")
+    elif pending and not failing:
+        console.print("[yellow]⚠ CI checks are still running — use fix-ci if they fail.[/yellow]")
+    else:
+        console.print("[green]✓ CI is green[/green]")
 
 
 @click.command()
@@ -223,7 +269,8 @@ def impl(repo_path: Path, resume: bool) -> None:
 
     # ── Commit and push ─────────────────────────────────────────────────────
     console.print("\n[dim]Committing and pushing implementation...[/dim]")
-    _commit_and_push(repo_path, impl_branch_name, state.feature_slug, state.feature_request, state.pr_url)
+    pr_url = _commit_and_push(repo_path, impl_branch_name, state.feature_slug, state.feature_request, state.pr_url)
+    _check_ci_status(pr_url)
 
     console.print(
         Panel(
