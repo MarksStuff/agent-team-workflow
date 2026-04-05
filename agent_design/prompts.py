@@ -12,6 +12,8 @@ Structure:
 import re
 from pathlib import Path
 
+from agent_design.config import PLUGIN_CORE
+
 # =============================================================================
 # Stage task prompts (solo sessions — Architect running alone)
 # No agent identity here. That goes in architect.md via --append-system-prompt.
@@ -123,20 +125,20 @@ def _parse_frontmatter_name(content: str) -> str | None:
 
 
 def get_available_specialists(agents_dir: Path | None = None) -> str:
-    """Discover available specialist agents from ~/.claude/agents/.
+    """Discover available specialist agents from plugins/core/agents/.
 
     Reads the agents directory and returns a comma-separated list of agent
     names, excluding the eng_manager (who is already running the session).
 
     Args:
         agents_dir: Override the agents directory (for testing). Defaults to
-                    ~/.claude/agents/.
+                    PLUGIN_CORE / "agents".
 
     Returns:
         Comma-separated agent names, or an empty string if none found.
     """
     if agents_dir is None:
-        agents_dir = Path.home() / ".claude" / "agents"
+        agents_dir = PLUGIN_CORE / "agents"
     if not agents_dir.exists():
         return ""
 
@@ -179,7 +181,7 @@ Project: {project_slug}
 Date: {date}
 
 Each agent: read this note. If it is relevant to your role and decisions you
-might make, update your own memory file at ~/.claude/agent-memory/<your-name>.md.
+might make, update your own memory file at <CORE>/memory/<your-name>.md (where CORE is the path from ~/.agent-design/core_plugin_dir).
 Use the established format (## Corrections & Overrides, YYYY-MM-DD [project]).
 If it is not relevant to you, do nothing.
 
@@ -202,7 +204,7 @@ PR Review Comments:
 
 Each agent: read all comments above. If any comment is relevant to your role
 and decisions you might make in future sessions, update your own memory file
-at ~/.claude/agent-memory/<your-name>.md.
+at <CORE>/memory/<your-name>.md (where CORE is the path from ~/.agent-design/core_plugin_dir).
 Use the established format (## Corrections & Overrides, YYYY-MM-DD [project]).
 If nothing is relevant to you, do nothing.
 

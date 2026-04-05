@@ -10,14 +10,24 @@ from rich.console import Console
 console = Console()
 
 
-def _nosign_flags(cwd: Path) -> list[str]:
-    """Return git -c flags that disable signing and ensure an identity exists.
+def _is_apple_github(cwd: Path) -> bool:
+    """Return True if the repo's origin remote points to github.pie.apple.com."""
+    r = subprocess.run(
+        ["git", "remote", "get-url", "origin"],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+    )
+    return r.returncode == 0 and "github.pie.apple.com" in r.stdout
 
-    Disables both commit and tag signing — these are internal tracking commits
-    and tags on orphan branches; they don't need to satisfy signing policies
-    enforced on main (e.g. Apple's ac-sign / tag.gpgSign).
 
-    Only injects user.name / user.email when genuinely absent; leaves any
+def _sign_flags(cwd: Path) -> list[str]:
+    """Return git -c signing flags appropriate for the repo's GitHub server.
+
+    Apple GitHub (github.pie.apple.com) → signing enabled (gpgsign=true).
+    Public GitHub (github.com) → signing disabled (gpgsign=false).
+
+    Also injects user.name / user.email when genuinely absent; leaves any
     already-configured identity untouched.
     """
 
@@ -30,12 +40,20 @@ def _nosign_flags(cwd: Path) -> list[str]:
         )
         return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
 
-    flags = ["-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false"]
+    if _is_apple_github(cwd):
+        flags = ["-c", "commit.gpgsign=true", "-c", "tag.gpgsign=true"]
+    else:
+        flags = ["-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false"]
+
     if not _get("user.name"):
         flags += ["-c", "user.name=agent-design"]
     if not _get("user.email"):
         flags += ["-c", "user.email=agent-design@localhost"]
     return flags
+
+
+# Backward-compatible alias
+_nosign_flags = _sign_flags
 
 
 # Helper to run git commands with error reporting

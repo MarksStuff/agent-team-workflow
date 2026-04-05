@@ -8,7 +8,7 @@ from rich.panel import Panel
 
 from agent_design.feature_extractor import extract_feature_from_doc
 from agent_design.git_ops import checkpoint, detect_existing_worktree, setup_worktree
-from agent_design.launcher import run_solo
+from agent_design.launcher import run_solo, run_team_in_repo
 from agent_design.prompts import STAGE_0_BASELINE, STAGE_1_INITIAL_DRAFT
 from agent_design.state import RoundState, generate_slug, load_round_state, save_round_state
 
@@ -166,13 +166,12 @@ def init(
     checkpoint(worktree_path, "stage 0: baseline analysis complete", "chk-baseline")
     console.print("[green]✓[/green] BASELINE.md written — checkpoint: chk-baseline\n")
 
-    # ── Stage 1: Architect writes DESIGN.md v1 ───────────────────────────────
-    console.print(Panel("Stage 1 — Architect: initial design draft", border_style="blue"))
-    rc = run_solo(
-        agent_name="architect",
-        task_prompt=STAGE_1_INITIAL_DRAFT.format(feature_request=feature_request),
-        worktree_path=worktree_path,
-        target_repo=repo_path,
+    # ── Stage 1: Team writes DESIGN.md v1 ────────────────────────────────────
+    console.print(Panel("Stage 1 — Team: initial design draft", border_style="blue"))
+    rc = run_team_in_repo(
+        repo_path,
+        worktree_path,
+        STAGE_1_INITIAL_DRAFT.format(feature_request=feature_request),
     )
     if rc != 0:
         console.print(f"[red]✗ Stage 1 failed (exit {rc})[/red]")

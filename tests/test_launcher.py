@@ -244,6 +244,28 @@ class TestRunPrintTeamReturnCode:
 
 
 # ---------------------------------------------------------------------------
+# Plugin flags contract
+# ---------------------------------------------------------------------------
+
+
+class TestRunPrintTeamPluginFlags:
+    """run_print_team passes --plugin-dir flags for bundled plugins."""
+
+    def test_command_includes_plugin_dir_flag(self, tmp_path: Path) -> None:
+        """--plugin-dir appears at least once in the command."""
+        worktree = tmp_path / ".agent-design"
+        worktree.mkdir()
+        target = tmp_path / "repo"
+        target.mkdir()
+
+        with patch("agent_design.launcher.subprocess.run", return_value=_make_completed_process()) as mock_run:
+            run_print_team(worktree, target, "msg")
+
+        cmd = mock_run.call_args[0][0]
+        assert "--plugin-dir" in cmd, f"--plugin-dir not in command: {cmd}"
+
+
+# ---------------------------------------------------------------------------
 # MCP config contract (NOT required per Developer's contract — run_print_team
 # does not use --strict-mcp-config unlike run_solo)
 # ---------------------------------------------------------------------------

@@ -60,7 +60,7 @@ Defer to Developer and Architect on how to build. Your authority is: what to bui
 
 ## Your memory file
 
-You have read/write access to ~/.claude/agent-memory/pm.md.
+At session start, read `~/.agent-design/core_plugin_dir` to get the absolute path to the core plugin (call it CORE). Your memory file is at `<CORE>/memory/pm.md`.
 
 Update it yourself when:
 - A human corrects or overrides something you proposed

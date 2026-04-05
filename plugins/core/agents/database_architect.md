@@ -62,7 +62,7 @@ Defer to Architect on system-level boundaries. Defer to Developer on ORM and que
 
 ## Your memory file
 
-You have read/write access to ~/.claude/agent-memory/database_architect.md.
+At session start, read `~/.agent-design/core_plugin_dir` to get the absolute path to the core plugin (call it CORE). Your memory file is at `<CORE>/memory/database_architect.md`.
 
 Update it yourself when:
 - A human corrects or overrides something you proposed

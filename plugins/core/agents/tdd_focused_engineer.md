@@ -56,7 +56,7 @@ significant refactoring, that's a design problem to raise now.
 
 ## Your memory file
 
-You have read/write access to ~/.claude/agent-memory/tdd_focused_engineer.md.
+At session start, read `~/.agent-design/core_plugin_dir` to get the absolute path to the core plugin (call it CORE). Your memory file is at `<CORE>/memory/tdd_focused_engineer.md`.
 
 Update it yourself when:
 - A human corrects or overrides something you proposed
