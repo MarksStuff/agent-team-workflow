@@ -34,11 +34,8 @@ def _make_ops(repo_path: Path) -> GitHubOperations | None:
         parsed = parse_github_remote_url(remote_url)
         if not parsed:
             return None
-        owner, repo_name, _ = parsed
         config = RepositoryConfig(
             workspace=str(repo_path),
-            github_owner=owner,
-            github_repo=repo_name,
             remote_url=remote_url,
         )
         return GitHubOperations(config)
