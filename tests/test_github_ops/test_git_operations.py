@@ -392,6 +392,9 @@ class TestGitDiffRange:
         """Test that triple-dot syntax is used (merge-base comparison)."""
         repo = git.Repo(temp_git_repo)
 
+        # Capture initial branch name (varies by git config: 'main' or 'master')
+        initial_branch = repo.active_branch.name
+
         # Create a branch from current HEAD
         repo.create_head("feature-branch")
         repo.heads["feature-branch"].checkout()
@@ -403,7 +406,7 @@ class TestGitDiffRange:
         repo.index.commit("Feature commit")
 
         # Get diff using branch name as base
-        diff_output = github_ops.git_diff_range(temp_git_repo, "main", "HEAD")
+        diff_output = github_ops.git_diff_range(temp_git_repo, initial_branch, "HEAD")
 
         # Should show the feature file
         assert "feature.txt" in diff_output
