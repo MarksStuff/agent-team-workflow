@@ -9,13 +9,13 @@ and assert its structural properties.
 
 AC-RF7 (symlink resolves) is a MANUAL check only — not tested here.
 
-All tests reference the file at ~/.claude/agents/retrospective_facilitator.md.
-The file is written by Developer as part of Phase 8.
+All tests reference the file at agent-definitions/retrospective_facilitator.md
+(checked into the repo so CI can access it).
 """
 
 from pathlib import Path
 
-AGENT_FILE_PATH = Path.home() / ".claude" / "agents" / "retrospective_facilitator.md"
+AGENT_FILE_PATH = Path(__file__).parent.parent / "agent-definitions" / "retrospective_facilitator.md"
 
 
 # ---------------------------------------------------------------------------
