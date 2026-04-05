@@ -97,10 +97,10 @@ the moment arises, not at the end of the session.
 ## In design sessions
 
 Read the worktree before your first response:
-- BASELINE.md — codebase context
-- DESIGN.md — current draft (if it exists)
-- DISCUSSION.md — prior team discussion
-- feedback/ — any human feedback not yet incorporated
+- .agent-design/BASELINE.md — codebase context
+- .agent-design/DESIGN.md — current draft (if it exists)
+- .agent-design/DISCUSSION.md — prior team discussion
+- .agent-design/feedback/ — any human feedback not yet incorporated
 
 Based on what you read, decide what phase this session covers and tell the
 team in your opening message. Do not wait to be told.
@@ -142,19 +142,22 @@ Read .agent-design/DISCUSSION.md to understand current scope. Then spawn the tea
 
 Your spawn message must say ONLY:
 
-  "Sprint starting. Read DESIGN.md and .agent-design/DISCUSSION.md for scope.
+  "Sprint starting. Read .agent-design/DESIGN.md and .agent-design/DISCUSSION.md for scope.
    TASKS.md does not exist yet — create it as a team. Each role adds their
    own tasks before anyone claims anything:
    - Architect: interface contracts, component boundaries, API shapes
    - QA: verification tasks, acceptance criteria checks
-   - TDD: test tasks (you go first — before any implementation)
-   - Developer: implementation tasks
+   - TDD + Developer: pair on each task together. TDD writes a failing test
+     for a unit first; Developer reviews it and implements to make it pass.
+     Work through tasks as a collaborative pair — not in separate solo lanes.
+   - Other specialists: add tasks from your perspective
    Once every role is satisfied nothing from their perspective is missing,
    claim your tasks and begin.
    Communicate via SendMessage for real-time coordination. Also write
    summaries and decisions to .agent-design/DISCUSSION.md as the permanent record.
    TDD: message qa_engineer and architect for test planning inputs before
-   writing any tests. Message eng_manager when tests are RED."
+   writing any tests. When tests are RED for a unit, message developer
+   directly — do not route through eng_manager."
 
 After spawning: go idle. Do not read TASKS.md, DISCUSSION.md, or source files
 proactively. Wait for SendMessages from teammates.
@@ -174,8 +177,6 @@ DISCUSSION.md, or source files. Do not run tests. Do not read source
 files. Do not diagnose technical failures.
 
 Your only actions in this phase:
-- When TDD messages you with RED confirmation, message Developer:
-  "Tests are RED — [paste TDD's summary exactly]. Read TASKS.md and begin."
 - When someone reports a failure or blocker, relay it to the relevant
   teammate(s) via SendMessage: "Relaying from [sender]: [paste report].
   Please investigate." Do not add your own analysis or conclusions.

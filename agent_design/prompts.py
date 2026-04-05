@@ -41,14 +41,14 @@ Write BASELINE.md now. Do not ask for confirmation.
 STAGE_1_INITIAL_DRAFT = """\
 Feature request: {feature_request}
 
-Read BASELINE.md in the current directory.
+Read .agent-design/BASELINE.md.
 
-Write the initial DESIGN.md. Before writing, identify explicitly:
+Write the initial .agent-design/DESIGN.md. Before writing, identify explicitly:
 - What is IN scope
 - What is OUT of scope
 - What assumptions you are making
 
-DESIGN.md structure:
+.agent-design/DESIGN.md structure:
 1. Scope — requirements, non-requirements, explicit assumptions
 2. Proposed approach and high-level architecture
 3. Key components and their responsibilities
@@ -56,8 +56,8 @@ DESIGN.md structure:
 5. Open questions for the team
 
 Also create:
-- DISCUSSION.md with header: # Design Discussion
-- DECISIONS.md with header: # Design Decisions
+- .agent-design/DISCUSSION.md with header: # Design Discussion
+- .agent-design/DECISIONS.md with header: # Design Decisions
 
 Write all three files now. Do not ask for confirmation.
 """
@@ -76,10 +76,10 @@ Task: continue the design workflow for the above feature.
 Available specialists: {available_specialists}
 
 Read the worktree before your first response:
-- BASELINE.md — codebase context
-- DESIGN.md — current draft (if it exists)
-- DISCUSSION.md — prior team discussion
-- feedback/ — any human feedback not yet incorporated
+- .agent-design/BASELINE.md — codebase context
+- .agent-design/DESIGN.md — current draft (if it exists)
+- .agent-design/DISCUSSION.md — prior team discussion
+- .agent-design/feedback/ — any human feedback not yet incorporated
 
 Based on what you read, decide what phase this session covers and tell the
 team in your opening message. Do not wait to be told.
@@ -92,7 +92,7 @@ Task: implement the above feature using the design in .agent-design/DESIGN.md
 
 Available specialists: {available_specialists}
 
-Before spawning the team: read DESIGN.md and identify which section(s) are
+Before spawning the team: read .agent-design/DESIGN.md and identify which section(s) are
 relevant to this feature. State those section(s) explicitly in your opening
 message — "We are implementing §X and §Y; everything else is out of scope."
 Do not spawn the team until you have done this scoping step.
@@ -105,7 +105,7 @@ Task: resume the implementation sprint for the above feature.
 
 Available specialists: {available_specialists}
 
-Before resuming: read DESIGN.md to re-establish which section(s) are in scope
+Before resuming: read .agent-design/DESIGN.md to re-establish which section(s) are in scope
 for this feature, and read TASKS.md to see what is done and what remains.
 State the current status in your opening message before calling on the team.
 """
@@ -237,6 +237,169 @@ def build_remember_start(
         correction=correction,
         project_slug=project_slug,
         date=date,
+    ).strip()
+
+
+_RETRO_MESSAGE = """\
+Sprint retrospective for project: {project_slug}
+Date: {date}
+{observation_block}
+You are the Retrospective Facilitator. Your job is to FACILITATE — not to do the work yourself.
+Spawn the full team immediately. Every agent must participate in every phase.
+
+---
+
+## Phase 1 — Gather and share the material
+
+Read these files (if they exist) and write a concise factual summary:
+- DISCUSSION.md — team discussion log
+- DECISIONS.md — resolved and deadlocked decisions
+- ../TASKS.md — implementation task board (one directory up, at the repo root)
+
+Share the summary with the whole team via SendMessage. Do not editorialize.
+This is facts only — what was built, what was decided, what was blocked.
+
+---
+
+## Phase 2 — Independent reflection (parallel)
+
+Message every team member individually:
+  "Read the sprint summary. Independently list:
+   1. What went well? (observations and facts only — not solutions yet)
+   2. What went badly? (observations and facts only — not solutions yet)
+   Reply with your lists before discussing with others."
+
+Wait for replies from all agents. If anyone is silent after a reasonable wait,
+call them out by name: "I need your reflection list before we continue."
+
+---
+
+## Phase 3 — Pool and prioritise
+
+Collect all items from all agents. Present the full combined list to the team:
+  "Here are all the observations. Vote: which 3 items from the 'went well' list
+   matter most? Which 3 from the 'went badly' list matter most?
+   Reply with your top 3 from each."
+
+Tally the votes. Announce the winning top 3 good and top 3 bad to the team.
+If there are ties, facilitate a short discussion to break them.
+
+---
+
+## Phase 4 — Discuss and decide
+
+For each of the 6 items (top 3 good, top 3 bad), facilitate a team discussion:
+- Good items: "What specifically made this work? How do we reinforce it?"
+- Bad items: "What specifically caused this? What would prevent it next time?"
+
+Ensure every agent contributes to at least one item's discussion.
+If someone is silent on an item that clearly touches their role, call them out.
+
+---
+
+## Phase 5 — Ownership
+
+Present the consolidated action items to the full team:
+  "For each action item below, which of you should act on it?
+   If it's relevant to your role, say so and update your memory file now.
+   Memory file: <CORE>/memory/<your-name>.md (CORE = path from ~/.agent-design/core_plugin_dir)
+   Use the format: ## Corrections & Overrides / YYYY-MM-DD [project]"
+
+**If any action item is claimed by nobody:**
+Flag it explicitly: "No agent claimed this item — this may indicate we are
+missing an agent role. Document it under 'Unowned Items' in RETRO.md."
+
+---
+
+## Phase 6 — Produce RETRO.md
+
+Write RETRO.md in the current directory with this exact format:
+
+# Retrospective — {project_slug} — {date}
+
+## What Went Well (top 3)
+1. <item> — <what to reinforce>
+
+## What Went Badly (top 3)
+1. <item> — <what to change>
+
+## Action Items
+- <who>: <what>
+
+## Unowned Items (possible missing agent role)
+- <item> — <why no agent claimed it>
+
+## Prompt Suggestions (pending human review)
+- [PS-1] <agent-file>.md: <concrete wording change that addresses a bad item>
+
+Prompt Suggestions must be concrete wording edits to agent definition files —
+not vague intentions. They address root causes of the bad items.
+"""
+
+_APPLY_SUGGESTION_MESSAGE = """\
+Apply prompt suggestion {suggestion_id} to an agent definition file.
+
+Suggestion ID: {suggestion_id}
+Agent file: {agent_file}
+Change to make: {suggestion_text}
+
+The full path to the agent definition file is:
+  <AGENT_CORE_PLUGIN_DIR>/agents/{agent_file}
+
+where AGENT_CORE_PLUGIN_DIR is available as an environment variable.
+
+Steps:
+1. Read the agent definition file at the path above.
+2. Make the minimal targeted edit described in the suggestion text.
+3. Write the updated content back to the file.
+4. Confirm what was changed (quote the before and after).
+"""
+
+
+def build_retro_start(project_slug: str, date: str, human_observation: str | None = None) -> str:
+    """Build the start message for a retrospective session.
+
+    Instructs the Retrospective Facilitator to run a team retrospective:
+    independent reflection, pooled voting, discussion, ownership assignment,
+    and RETRO.md production.
+
+    Args:
+        project_slug: Short identifier for the project (e.g., 'news-reader')
+        date: Date string for the retrospective (e.g., '2026-04-05')
+        human_observation: Optional human observation to seed the retro
+
+    Returns:
+        Start message string for run_print_team()
+    """
+    if human_observation:
+        observation_block = f"\nHuman observation (treat as a first-class input alongside the sprint artifacts):\n  {human_observation}\n"
+    else:
+        observation_block = ""
+    return _RETRO_MESSAGE.format(
+        project_slug=project_slug,
+        date=date,
+        observation_block=observation_block,
+    ).strip()
+
+
+def build_apply_suggestion_start(suggestion_id: str, agent_file: str, suggestion_text: str) -> str:
+    """Build the start message for an apply-suggestion session.
+
+    Instructs Claude to edit a specific agent definition file with the
+    minimal change described in the suggestion.
+
+    Args:
+        suggestion_id: Suggestion identifier (e.g., 'PS-1')
+        agent_file: Agent definition filename (e.g., 'architect.md')
+        suggestion_text: The wording change to apply
+
+    Returns:
+        Start message string for run_apply_suggestion()
+    """
+    return _APPLY_SUGGESTION_MESSAGE.format(
+        suggestion_id=suggestion_id,
+        agent_file=agent_file,
+        suggestion_text=suggestion_text,
     ).strip()
 
 

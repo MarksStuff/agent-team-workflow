@@ -2,6 +2,7 @@
 
 import click
 
+from agent_design.cli.commands.apply_suggestion import apply_suggestion
 from agent_design.cli.commands.checkpoints import checkpoints
 from agent_design.cli.commands.close import close
 from agent_design.cli.commands.continue_ import continue_cmd
@@ -11,6 +12,7 @@ from agent_design.cli.commands.impl import impl
 from agent_design.cli.commands.init import init
 from agent_design.cli.commands.remember import remember
 from agent_design.cli.commands.resume import resume
+from agent_design.cli.commands.retro import retro
 from agent_design.cli.commands.review_feedback import review_feedback
 from agent_design.cli.commands.rollback import rollback
 from agent_design.cli.commands.status import status
@@ -40,6 +42,8 @@ cli.add_command(resume)
 cli.add_command(close)
 cli.add_command(remember)
 cli.add_command(review_feedback)
+cli.add_command(retro)
+cli.add_command(apply_suggestion)
 
 
 if __name__ == "__main__":

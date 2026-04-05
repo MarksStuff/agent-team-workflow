@@ -20,6 +20,19 @@
   `main`, use `git rebase`, not `git merge`.
 - **`trash` over `rm`** for file deletions — recoverable beats gone forever.
 
+### Commit signing
+
+Before every `git commit`, check which GitHub server is the remote:
+
+```bash
+git remote get-url origin
+```
+
+- Remote contains `github.pie.apple.com` (Apple internal): use `git commit ...` normally — GPG signing is enabled and required.
+- Remote contains `github.com` (public GitHub): use `git -c commit.gpgsign=false commit ...` — signing is disabled; bare `git commit` will fail if GPG is globally configured.
+
+**Never run bare `git commit` without checking the remote first.**
+
 ---
 
 ## Agent team collaboration
