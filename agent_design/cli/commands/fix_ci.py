@@ -53,7 +53,7 @@ def _fetch_ci_failures(pr_url: str) -> str | None:
     except json.JSONDecodeError:
         return None
 
-    failing = [c for c in checks if c.get("conclusion") in ("FAILURE", "failure", "timed_out", "TIMED_OUT")]
+    failing = [c for c in checks if c.get("state") == "fail"]
     if not failing:
         return None
 

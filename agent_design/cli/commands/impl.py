@@ -148,10 +148,8 @@ def _check_ci_status(pr_url: str | None) -> None:
         console.print("[yellow]⚠ CI checks are still running — use fix-ci if they fail.[/yellow]")
         return
 
-    failing = [c["name"] for c in checks if c.get("conclusion") in ("FAILURE", "failure", "timed_out", "TIMED_OUT")]
-    pending = [
-        c for c in checks if c.get("state") in ("PENDING", "pending", "QUEUED", "queued", "IN_PROGRESS", "in_progress")
-    ]
+    failing = [c["name"] for c in checks if c.get("state") == "fail"]
+    pending = [c for c in checks if c.get("state") == "pending"]
 
     if failing:
         console.print("[red]✗ CI failed — run 'agent-design fix-ci' to fix.[/red]")
