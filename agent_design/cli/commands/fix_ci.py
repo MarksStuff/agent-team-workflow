@@ -86,18 +86,63 @@ def _get_pr_url(repo_path: Path) -> str | None:
     return str(pulls[0].get("html_url", "")) or None
 
 
+def _extract_test_failures(log_text: str) -> str:
+    """Extract the test failure section from a GitHub Actions log.
+
+    GitHub Actions log lines are prefixed with an ISO timestamp.
+    We strip those, then look for the pytest FAILURES / short test summary
+    sections. Falls back to the last 60 lines if no pytest markers are found.
+    """
+    # Strip "2024-01-01T00:00:00.000Z " prefix from each line
+    cleaned = []
+    for line in log_text.splitlines():
+        m = re.match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z (.*)", line)
+        cleaned.append(m.group(1) if m else line)
+    text = "\n".join(cleaned)
+
+    # Prefer the ===== FAILURES ===== block
+    failures_m = re.search(
+        r"(={5,} FAILURES ={5,}.*?)(?=={5,} (?:short test summary info|warnings summary|ERROR) ={5,}|$)",
+        text,
+        re.DOTALL,
+    )
+    if failures_m:
+        return failures_m.group(1)[:4000]
+
+    # Fall back to short test summary info block
+    summary_m = re.search(r"(={5,} short test summary info ={5,}.*?)(?=={5,}|$)", text, re.DOTALL)
+    if summary_m:
+        return summary_m.group(1)[:2000]
+
+    # Last resort: tail of the log
+    return "\n".join(cleaned[-60:])
+
+
+def _fetch_job_log_failures(repo: str, job_id: str | int) -> str | None:
+    """Download a GitHub Actions job log and return the failure section.
+
+    Uses the REST endpoint that redirects to a plain-text log file.
+    Returns None if the log cannot be fetched.
+    """
+    result = _gh("api", f"repos/{repo}/actions/jobs/{job_id}/logs")
+    if result.returncode != 0 or not result.stdout:
+        return None
+    return _extract_test_failures(result.stdout)
+
+
 def _fetch_check_run_details(repo: str, check_run: dict) -> str:
     """Fetch detailed failure info for a single check run.
 
-    Returns a formatted string with the output summary/text and annotations.
-    Falls back gracefully if any API call fails.
+    For GitHub Actions check runs, downloads the actual job log and extracts
+    the failure section (pytest FAILURES block, etc.).
+    Falls back to annotations for non-Actions checks.
     """
     name = check_run.get("name", "unknown")
     conclusion = check_run.get("conclusion", "")
     check_run_id = check_run.get("id")
     lines: list[str] = [f"### {name} ({conclusion})"]
 
-    # Include the check run output summary/text if present
+    # Include structured output if present (often empty for GHA)
     output = check_run.get("output") or {}
     if output.get("title"):
         lines.append(f"Title: {output['title']}")
@@ -106,8 +151,16 @@ def _fetch_check_run_details(repo: str, check_run: dict) -> str:
     if output.get("text"):
         lines.append(output["text"].strip())
 
-    # Fetch annotations for this check run
-    if check_run_id:
+    # For GitHub Actions jobs, fetch the real log output
+    app = check_run.get("app") or {}
+    external_id = check_run.get("external_id", "")
+    if app.get("slug") == "github-actions" and external_id:
+        log_section = _fetch_job_log_failures(repo, external_id)
+        if log_section:
+            lines.append("Job log (failure section):")
+            lines.append(log_section)
+    elif check_run_id:
+        # Non-Actions check: use annotations
         ann_result = _gh("api", f"repos/{repo}/check-runs/{check_run_id}/annotations")
         if ann_result.returncode == 0:
             try:
@@ -117,7 +170,7 @@ def _fetch_check_run_details(repo: str, check_run: dict) -> str:
             failure_anns = [a for a in annotations if a.get("annotation_level") in ("failure", "warning")]
             if failure_anns:
                 lines.append("Annotations:")
-                for ann in failure_anns[:20]:  # cap at 20 to keep prompt size reasonable
+                for ann in failure_anns[:20]:
                     path = ann.get("path", "")
                     start_line = ann.get("start_line", "")
                     msg = ann.get("message", "").strip()
