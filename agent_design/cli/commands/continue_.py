@@ -7,7 +7,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 from agent_design.git_ops import checkpoint, detect_existing_worktree
-from agent_design.launcher import run_team
+from agent_design.launcher import run_team_in_repo
 from agent_design.prompts import build_continue_start
 from agent_design.state import load_round_state, save_round_state
 
@@ -41,7 +41,7 @@ def continue_cmd(repo_path: Path) -> None:
     console.print(Panel("Continuing design workflow — agent team session", border_style="magenta"))
 
     start_message = build_continue_start(state.feature_request)
-    rc = run_team(worktree_path, Path(state.target_repo), start_message)
+    rc = run_team_in_repo(Path(state.target_repo), worktree_path, start_message)
     if rc != 0:
         console.print(f"[yellow]⚠ Claude exited with code {rc}[/yellow]")
 

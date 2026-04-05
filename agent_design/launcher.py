@@ -1,8 +1,9 @@
 """Launch claude sessions for each design stage.
 
-Two modes:
-- run_solo(): non-interactive --print session (Architect writing baseline/design draft)
-- run_team(): interactive agent team session handed off to the terminal
+Three modes:
+- run_solo(): non-interactive --print session (Architect writing BASELINE.md)
+- run_print_team(): non-interactive team session (remember, review-feedback)
+- run_team_in_repo(): interactive team session rooted in the target repo
 """
 
 import json
@@ -179,66 +180,19 @@ def run_print_team(
     return result.returncode
 
 
-def run_team(
-    worktree_path: Path,
-    target_repo: Path,
-    start_message: str,
-) -> int:
-    """Launch an interactive claude agent team session.
-
-    Hands the terminal over to claude. The user sees the session live and
-    can interact (Shift+Down to cycle teammates, type to message them).
-    Returns when the user exits claude or the session completes.
-
-    The start_message is passed as a positional argument to claude so the
-    session begins immediately without requiring the user to copy-paste.
-
-    Args:
-        worktree_path: Path to .agent-design/ worktree (claude's working dir)
-        target_repo: Path to target repo (added as readable directory)
-        start_message: Initial message delivered as the first turn
-
-    Returns:
-        Exit code from claude process
-    """
-    _write_plugin_root()
-    env = _plugin_env(os.environ.copy())
-    api_key = _get_api_key()
-    if api_key:
-        env["ANTHROPIC_API_KEY"] = api_key
-    env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] = "1"
-
-    result = subprocess.run(
-        [
-            "claude",
-            "--dangerously-skip-permissions",
-            *_plugin_flags(),
-            "--agent",
-            "eng_manager",
-            "--add-dir",
-            str(target_repo),
-            "--",
-            start_message,
-        ],
-        cwd=str(worktree_path),
-        env=env,
-    )
-    return result.returncode
-
-
 def run_team_in_repo(
     repo_path: Path,
     worktree_path: Path,
     start_message: str,
 ) -> int:
-    """Launch an interactive claude agent team session in the target repo root.
+    """Launch an interactive claude agent team session rooted in the target repo.
 
-    Like run_team() but the working directory is the target repo root so
-    agents can read and write source files directly. The worktree is added
-    as an extra directory so agents can read .agent-design/DESIGN.md.
+    The working directory is the target repo root so agents can read and write
+    source files directly. The worktree (.agent-design/) is added as an extra
+    readable directory so agents can access DESIGN.md and other artefacts.
 
-    The start_message is passed as a positional argument to claude so the
-    session begins immediately without requiring the user to copy-paste.
+    Used for all interactive team sessions: design (init Stage 1, next,
+    continue, feedback) and implementation (impl, fix-ci).
 
     Args:
         repo_path: Path to target repo (claude's working dir)

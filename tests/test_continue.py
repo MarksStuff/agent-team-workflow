@@ -145,7 +145,7 @@ class TestContinueCmdWithSession:
         with (
             patch("agent_design.cli.commands.continue_.detect_existing_worktree", return_value=True),
             patch("agent_design.cli.commands.continue_.load_round_state", return_value=state),
-            patch("agent_design.cli.commands.continue_.run_team", return_value=0) as mock_run_team,
+            patch("agent_design.cli.commands.continue_.run_team_in_repo", return_value=0) as mock_run_team,
             patch("agent_design.cli.commands.continue_.save_round_state"),
             patch("agent_design.cli.commands.continue_.checkpoint"),
         ):
@@ -161,14 +161,14 @@ class TestContinueCmdWithSession:
 
         captured_message: list[str] = []
 
-        def capture_run_team(worktree_path: Path, target_repo: Path, start_message: str) -> int:
+        def capture_run_team(repo_path: Path, worktree_path: Path, start_message: str) -> int:
             captured_message.append(start_message)
             return 0
 
         with (
             patch("agent_design.cli.commands.continue_.detect_existing_worktree", return_value=True),
             patch("agent_design.cli.commands.continue_.load_round_state", return_value=state),
-            patch("agent_design.cli.commands.continue_.run_team", side_effect=capture_run_team),
+            patch("agent_design.cli.commands.continue_.run_team_in_repo", side_effect=capture_run_team),
             patch("agent_design.cli.commands.continue_.save_round_state"),
             patch("agent_design.cli.commands.continue_.checkpoint"),
         ):
@@ -192,14 +192,14 @@ class TestContinueCmdWithSession:
             patch("agent_design.cli.commands.continue_.detect_existing_worktree", return_value=True),
             patch("agent_design.cli.commands.continue_.load_round_state", return_value=state),
             patch("agent_design.cli.commands.continue_.build_continue_start", return_value=sentinel),
-            patch("agent_design.cli.commands.continue_.run_team", return_value=0) as mock_run_team,
+            patch("agent_design.cli.commands.continue_.run_team_in_repo", return_value=0) as mock_run_team,
             patch("agent_design.cli.commands.continue_.save_round_state"),
             patch("agent_design.cli.commands.continue_.checkpoint"),
         ):
             runner.invoke(continue_cmd, ["--repo-path", str(tmp_path)])
 
         # The sentinel must be the start_message arg to run_team
-        _worktree_arg, _target_arg, start_message_arg = mock_run_team.call_args[0]
+        _repo_arg, _worktree_arg, start_message_arg = mock_run_team.call_args[0]
         assert start_message_arg == sentinel
 
     def test_state_saved_after_run_team(self, tmp_path: Path) -> None:
@@ -211,7 +211,7 @@ class TestContinueCmdWithSession:
         with (
             patch("agent_design.cli.commands.continue_.detect_existing_worktree", return_value=True),
             patch("agent_design.cli.commands.continue_.load_round_state", return_value=state),
-            patch("agent_design.cli.commands.continue_.run_team", return_value=0),
+            patch("agent_design.cli.commands.continue_.run_team_in_repo", return_value=0),
             patch("agent_design.cli.commands.continue_.save_round_state") as mock_save,
             patch("agent_design.cli.commands.continue_.checkpoint"),
         ):
@@ -228,7 +228,7 @@ class TestContinueCmdWithSession:
         with (
             patch("agent_design.cli.commands.continue_.detect_existing_worktree", return_value=True),
             patch("agent_design.cli.commands.continue_.load_round_state", return_value=state),
-            patch("agent_design.cli.commands.continue_.run_team", return_value=0),
+            patch("agent_design.cli.commands.continue_.run_team_in_repo", return_value=0),
             patch("agent_design.cli.commands.continue_.save_round_state"),
             patch("agent_design.cli.commands.continue_.checkpoint") as mock_checkpoint,
         ):
@@ -250,7 +250,7 @@ class TestContinueCmdWithSession:
         with (
             patch("agent_design.cli.commands.continue_.detect_existing_worktree", return_value=True),
             patch("agent_design.cli.commands.continue_.load_round_state", return_value=state),
-            patch("agent_design.cli.commands.continue_.run_team", return_value=0),
+            patch("agent_design.cli.commands.continue_.run_team_in_repo", return_value=0),
             patch("agent_design.cli.commands.continue_.save_round_state", side_effect=capture_save),
             patch("agent_design.cli.commands.continue_.checkpoint"),
         ):
@@ -268,7 +268,7 @@ class TestContinueCmdWithSession:
         with (
             patch("agent_design.cli.commands.continue_.detect_existing_worktree", return_value=True),
             patch("agent_design.cli.commands.continue_.load_round_state", return_value=state),
-            patch("agent_design.cli.commands.continue_.run_team", return_value=1),
+            patch("agent_design.cli.commands.continue_.run_team_in_repo", return_value=1),
             patch("agent_design.cli.commands.continue_.save_round_state") as mock_save,
             patch("agent_design.cli.commands.continue_.checkpoint"),
         ):
@@ -287,7 +287,7 @@ class TestContinueCmdWithSession:
             patch("agent_design.cli.commands.continue_.detect_existing_worktree", return_value=True),
             patch("agent_design.cli.commands.continue_.load_round_state", return_value=state),
             patch("agent_design.cli.commands.continue_.build_continue_start", return_value="prompt") as mock_build,
-            patch("agent_design.cli.commands.continue_.run_team", return_value=0),
+            patch("agent_design.cli.commands.continue_.run_team_in_repo", return_value=0),
             patch("agent_design.cli.commands.continue_.save_round_state"),
             patch("agent_design.cli.commands.continue_.checkpoint"),
         ):
