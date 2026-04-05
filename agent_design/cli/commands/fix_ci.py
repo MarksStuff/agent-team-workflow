@@ -161,7 +161,9 @@ def _fetch_check_run_details(repo: str, check_run: dict) -> str:
     details_url = check_run.get("details_url", "")
     job_id_match = re.search(r"/jobs/(\d+)", details_url)
     job_id = job_id_match.group(1) if job_id_match else (external_id if external_id.isdigit() else "")
-    console.print(f"[dim]  ↳ check run: app={app_slug!r} job_id={job_id!r} id={check_run_id}[/dim]")
+    console.print(
+        f"[dim]  ↳ check run: app={app_slug!r} job_id={job_id!r} id={check_run_id} details_url={details_url!r}[/dim]"
+    )
     if app_slug == "github-actions" and job_id:
         log_section = _fetch_job_log_failures(repo, job_id)
         if log_section:
