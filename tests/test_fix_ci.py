@@ -2,7 +2,7 @@
 
 Contract:
 - `--repo-path` (default: current dir) and `--pr` (optional) accepted
-- If `--pr` given, use it; else auto-detect via _get_pr_url
+- If `--pr` given, use it; else auto-detect via _get_pr_info
 - UsageError when both --pr and auto-detect fail
 - When _fetch_ci_failures returns None → CI green, no launcher call, exit 0
 - When _fetch_ci_failures returns text → run_team_in_repo called once with
@@ -15,6 +15,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from click.testing import CliRunner
+
+_PR_INFO_STUB = {"url": "https://github.com/o/r/pull/1", "number": 1}
 
 # ---------------------------------------------------------------------------
 # Registration
@@ -58,7 +60,7 @@ class TestFixCiArguments:
 
         runner = CliRunner()
         with (
-            patch("agent_design.cli.commands.fix_ci._get_pr_url", return_value="https://github.com/o/r/pull/1"),
+            patch("agent_design.cli.commands.fix_ci._get_pr_info", return_value=_PR_INFO_STUB),
             patch("agent_design.cli.commands.fix_ci._fetch_ci_failures", return_value=None),
         ):
             result = runner.invoke(fix_ci_cmd, ["--repo-path", str(tmp_path)])
@@ -79,7 +81,7 @@ class TestFixCiArguments:
 
         runner = CliRunner()
         with (
-            patch("agent_design.cli.commands.fix_ci._get_pr_url", return_value="https://github.com/o/r/pull/1"),
+            patch("agent_design.cli.commands.fix_ci._get_pr_info", return_value=_PR_INFO_STUB),
             patch("agent_design.cli.commands.fix_ci._fetch_ci_failures", return_value=None),
         ):
             # invoke with no explicit args — defaults kick in
@@ -96,25 +98,25 @@ class TestFixCiPrUrlResolution:
     """--pr takes precedence; auto-detect called when --pr omitted; UsageError when both fail."""
 
     def test_pr_option_takes_precedence(self, tmp_path: Path) -> None:
-        """When --pr is supplied, _get_pr_url is never called."""
+        """When --pr is supplied, _get_pr_info is never called."""
         from agent_design.cli.commands.fix_ci import fix_ci as fix_ci_cmd
 
         runner = CliRunner()
         with (
-            patch("agent_design.cli.commands.fix_ci._get_pr_url") as mock_detect,
+            patch("agent_design.cli.commands.fix_ci._get_pr_info") as mock_detect,
             patch("agent_design.cli.commands.fix_ci._fetch_ci_failures", return_value=None),
         ):
             runner.invoke(fix_ci_cmd, ["--repo-path", str(tmp_path), "--pr", "https://github.com/o/r/pull/7"])
         mock_detect.assert_not_called()
 
     def test_auto_detect_called_when_pr_omitted(self, tmp_path: Path) -> None:
-        """When --pr is omitted, _get_pr_url is called."""
+        """When --pr is omitted, _get_pr_info is called."""
         from agent_design.cli.commands.fix_ci import fix_ci as fix_ci_cmd
 
         runner = CliRunner()
         with (
             patch(
-                "agent_design.cli.commands.fix_ci._get_pr_url", return_value="https://github.com/o/r/pull/1"
+                "agent_design.cli.commands.fix_ci._get_pr_info", return_value=_PR_INFO_STUB
             ) as mock_detect,
             patch("agent_design.cli.commands.fix_ci._fetch_ci_failures", return_value=None),
         ):
@@ -126,7 +128,7 @@ class TestFixCiPrUrlResolution:
         from agent_design.cli.commands.fix_ci import fix_ci as fix_ci_cmd
 
         runner = CliRunner()
-        with patch("agent_design.cli.commands.fix_ci._get_pr_url", return_value=None):
+        with patch("agent_design.cli.commands.fix_ci._get_pr_info", return_value=None):
             result = runner.invoke(fix_ci_cmd, ["--repo-path", str(tmp_path)])
         assert result.exit_code != 0
 
@@ -135,7 +137,7 @@ class TestFixCiPrUrlResolution:
         from agent_design.cli.commands.fix_ci import fix_ci as fix_ci_cmd
 
         runner = CliRunner()
-        with patch("agent_design.cli.commands.fix_ci._get_pr_url", return_value=None):
+        with patch("agent_design.cli.commands.fix_ci._get_pr_info", return_value=None):
             result = runner.invoke(fix_ci_cmd, ["--repo-path", str(tmp_path)])
         output = (result.output or "").lower()
         assert "pr" in output or "pull" in output

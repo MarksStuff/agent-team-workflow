@@ -1,89 +1,82 @@
 """agent-design fix-ci — fix CI failures on a PR branch."""
 
-import json
 import os
 import re
 import subprocess
+import urllib.request
 from pathlib import Path
+from typing import Any
 
 import click
 from rich.console import Console
 
 from agent_design.git_ops import _nosign_flags, _run_git_in_target
+from agent_design.github_ops.operations import GitHubOperations, RepositoryConfig, parse_github_remote_url
 from agent_design.launcher import run_team_in_repo
 from agent_design.prompts import build_fix_ci_start
 from agent_design.state import load_round_state
 
 console = Console()
 
-ROXY_GITHUB_TOKEN = Path.home() / ".roxy_github_token"
 
-
-def _gh(*args: str) -> subprocess.CompletedProcess[str]:
-    """Run a gh CLI command using Roxy's token."""
-    env = os.environ.copy()
-    if ROXY_GITHUB_TOKEN.exists():
-        env["GH_TOKEN"] = ROXY_GITHUB_TOKEN.read_text().strip()
-    return subprocess.run(["gh", *args], capture_output=True, text=True, env=env)
-
-
-def _parse_pr_url(pr_url: str) -> tuple[str, str] | None:
-    """Parse 'owner/repo' and PR number from a GitHub PR URL.
-
-    Returns (repo, pr_number) or None if the URL doesn't match.
-    """
-    m = re.search(r"github\.com/([^/]+/[^/]+)/pull/(\d+)", pr_url)
-    if not m:
-        return None
-    return m.group(1), m.group(2)
-
-
-def _get_pr_url(repo_path: Path) -> str | None:
-    """Detect the PR URL for the current branch in repo_path via REST API.
-
-    Gets the current branch from git, then queries the GitHub REST API
-    to find an open PR for that branch. Avoids GraphQL dependency.
-    Returns the URL string or None if not on a PR branch.
-    """
-    # Get current branch name
-    branch_result = subprocess.run(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        cwd=repo_path,
-        capture_output=True,
-        text=True,
-    )
-    if branch_result.returncode != 0:
-        return None
-    branch = branch_result.stdout.strip()
-    if not branch or branch == "HEAD":
-        return None
-
-    # Get owner/repo from remote
-    remote_result = subprocess.run(
-        ["git", "remote", "get-url", "origin"],
-        cwd=repo_path,
-        capture_output=True,
-        text=True,
-    )
-    if remote_result.returncode != 0:
-        return None
-    remote_url = remote_result.stdout.strip()
-    m = re.search(r"github\.com[:/]([^/]+/[^/\s]+?)(?:\.git)?$", remote_url)
-    if not m:
-        return None
-    repo = m.group(1)
-
-    # Find open PRs for this branch via REST
-    result = _gh("api", f"repos/{repo}/pulls?head={repo.split('/')[0]}:{branch}&state=open")
-    if result.returncode != 0:
-        return None
+def _make_ops(repo_path: Path) -> GitHubOperations | None:
+    """Create a GitHubOperations instance from a local repo path."""
     try:
-        pulls = json.loads(result.stdout)
-    except json.JSONDecodeError:
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            return None
+        remote_url = result.stdout.strip()
+        parsed = parse_github_remote_url(remote_url)
+        if not parsed:
+            return None
+        owner, repo_name, _ = parsed
+        config = RepositoryConfig(
+            workspace=str(repo_path),
+            github_owner=owner,
+            github_repo=repo_name,
+            remote_url=remote_url,
+        )
+        return GitHubOperations(config)
+    except Exception as e:
+        console.print(f"[dim]Could not initialise GitHubOperations: {e}[/dim]")
         return None
-    if not pulls:
+
+
+def _get_pr_info(repo_path: Path) -> dict[str, Any] | None:
+    """Return PR info dict (number, url, head_sha) for the current branch, or None."""
+    ops = _make_ops(repo_path)
+    if ops is None:
         return None
-    return str(pulls[0].get("html_url", "")) or None
+    result = ops.find_pr_for_branch()
+    if not result.get("success") or result.get("pr") is None:
+        return None
+    pr: dict[str, Any] = result["pr"]
+    return pr
+
+
+def _fetch_job_log(owner: str, repo_name: str, job_id: str, token: str) -> str | None:
+    """Download GitHub Actions job log and return the failure section."""
+    url = f"https://api.github.com/repos/{owner}/{repo_name}/actions/jobs/{job_id}/logs"
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            log_text = resp.read().decode("utf-8", errors="replace")
+        return _extract_test_failures(log_text)
+    except Exception as e:
+        console.print(f"[dim]  ↳ log fetch failed for job {job_id}: {e}[/dim]")
+        return None
 
 
 def _extract_test_failures(log_text: str) -> str:
@@ -118,143 +111,69 @@ def _extract_test_failures(log_text: str) -> str:
     return "\n".join(cleaned[-60:])
 
 
-def _fetch_job_log_failures(repo: str, job_id: str | int) -> str | None:
-    """Download a GitHub Actions job log and return the failure section.
+def _fetch_ci_failures(repo_path: Path, pr_number: int) -> str | None:
+    """Return a formatted failure string for failing CI checks, or None if CI is green.
 
-    Uses the REST endpoint that redirects to a plain-text log file.
-    Returns None if the log cannot be fetched.
+    Uses GitHubOperations to find failing check runs and fetches their job logs
+    directly via the GitHub REST API.
     """
-    result = _gh("api", f"repos/{repo}/actions/jobs/{job_id}/logs")
-    if result.returncode != 0 or not result.stdout:
-        console.print(f"[dim]  ↳ job logs API rc={result.returncode}, stderr={result.stderr[:120].strip()}[/dim]")
-        return None
-    return _extract_test_failures(result.stdout)
-
-
-def _fetch_check_run_details(repo: str, check_run: dict) -> str:
-    """Fetch detailed failure info for a single check run.
-
-    For GitHub Actions check runs, downloads the actual job log and extracts
-    the failure section (pytest FAILURES block, etc.).
-    Falls back to annotations for non-Actions checks.
-    """
-    name = check_run.get("name", "unknown")
-    conclusion = check_run.get("conclusion", "")
-    check_run_id = check_run.get("id")
-    lines: list[str] = [f"### {name} ({conclusion})"]
-
-    # Include structured output if present (often empty for GHA)
-    output = check_run.get("output") or {}
-    if output.get("title"):
-        lines.append(f"Title: {output['title']}")
-    if output.get("summary"):
-        lines.append(output["summary"].strip())
-    if output.get("text"):
-        lines.append(output["text"].strip())
-
-    # For GitHub Actions jobs, fetch the real log output.
-    # The numeric job ID lives in details_url (.../jobs/{id}), not in
-    # external_id (which is a UUID for GHA check runs).
-    app = check_run.get("app") or {}
-    app_slug = app.get("slug", "")
-    external_id = check_run.get("external_id", "")
-    details_url = check_run.get("details_url", "")
-    job_id_match = re.search(r"/jobs?/(\d+)", details_url)
-    job_id = job_id_match.group(1) if job_id_match else (external_id if external_id.isdigit() else "")
-    console.print(
-        f"[dim]  ↳ check run: app={app_slug!r} job_id={job_id!r} id={check_run_id} details_url={details_url!r}[/dim]"
-    )
-    if app_slug == "github-actions" and job_id:
-        log_section = _fetch_job_log_failures(repo, job_id)
-        if log_section:
-            lines.append("Job log (failure section):")
-            lines.append(log_section)
-        else:
-            console.print("[dim]  ↳ no log section extracted[/dim]")
-    elif check_run_id:
-        # Non-Actions check: use annotations
-        ann_result = _gh("api", f"repos/{repo}/check-runs/{check_run_id}/annotations")
-        console.print(f"[dim]  ↳ annotations API rc={ann_result.returncode}[/dim]")
-        if ann_result.returncode == 0:
-            try:
-                annotations = json.loads(ann_result.stdout)
-            except json.JSONDecodeError:
-                annotations = []
-            failure_anns = [a for a in annotations if a.get("annotation_level") in ("failure", "warning")]
-            if failure_anns:
-                lines.append("Annotations:")
-                for ann in failure_anns[:20]:
-                    path = ann.get("path", "")
-                    start_line = ann.get("start_line", "")
-                    msg = ann.get("message", "").strip()
-                    title = ann.get("title", "")
-                    loc = f"{path}:{start_line}" if path else ""
-                    label = title or msg[:80]
-                    detail = msg if title and msg != title else ""
-                    ann_line = f"  [{loc}] {label}"
-                    if detail:
-                        ann_line += f"\n    {detail[:200]}"
-                    lines.append(ann_line)
-
-    return "\n".join(lines)
-
-
-def _fetch_ci_failures(pr_url: str) -> str | None:
-    """Fetch CI check results for the given PR URL via the REST API.
-
-    Returns a formatted failure string with check names, output summaries,
-    and annotations for each failing check, or None if all checks are passing.
-    """
-    parsed = _parse_pr_url(pr_url)
-    if not parsed:
-        return None
-    repo, pr_number = parsed
-
-    # Get PR head SHA via REST
-    pr_result = _gh("api", f"repos/{repo}/pulls/{pr_number}", "--jq", ".head.sha")
-    if pr_result.returncode != 0:
-        return None
-    sha = pr_result.stdout.strip()
-    if not sha:
+    ops = _make_ops(repo_path)
+    if ops is None:
         return None
 
-    # Get check runs for that commit via REST
-    runs_result = _gh("api", f"repos/{repo}/commits/{sha}/check-runs")
-    if runs_result.returncode != 0:
+    ci = ops.check_ci_build_and_test_errors(pr_number=pr_number)
+    if not ci.get("success"):
+        console.print(f"[dim]CI check failed: {ci.get('error')}[/dim]")
         return None
+
+    if not ci.get("has_failures"):
+        return None
+
+    commit_sha = ci["commit_sha"]
+    token = ops.github_token or ""
+    owner = ops.github_owner
+    repo_name = ops.github_repo
+
+    # Get raw PyGithub CheckRun objects so we have details_url
+    assert ops.repo is not None
+    failing_conclusions = {"failure", "timed_out", "cancelled", "action_required"}
+    sections: list[str] = []
 
     try:
-        data = json.loads(runs_result.stdout)
-    except json.JSONDecodeError:
+        check_runs_page = ops.repo.get_commit(commit_sha).get_check_runs()
+        for cr in check_runs_page:
+            if cr.conclusion not in failing_conclusions:
+                continue
+            lines = [f"### {cr.name} ({cr.conclusion})"]
+
+            # Parse job ID from details_url
+            job_id_match = re.search(r"/jobs?/(\d+)", cr.details_url or "")
+            job_id = job_id_match.group(1) if job_id_match else ""
+
+            if job_id and token:
+                log_section = _fetch_job_log(owner, repo_name, job_id, token)
+                if log_section:
+                    lines.append("Job log (failure section):")
+                    lines.append(log_section)
+            sections.append("\n".join(lines))
+    except Exception as e:
+        console.print(f"[dim]Could not retrieve check runs: {e}[/dim]")
+        # Fall back to the dicts from check_ci_build_and_test_errors
+        for cr in ci.get("failed_checks", []):
+            sections.append(f"### {cr['name']} ({cr['conclusion']})")
+
+    if not sections:
         return None
 
-    check_runs = data.get("check_runs", [])
-    failing = [c for c in check_runs if c.get("conclusion") in ("failure", "timed_out", "cancelled", "action_required")]
-    if not failing:
-        return None
-
-    sections = [_fetch_check_run_details(repo, c) for c in failing]
     return "Failing checks:\n\n" + "\n\n".join(sections)
-
-
-def _get_repo_name(repo_path: Path) -> str:
-    """Extract owner/repo from git remote."""
-    result = subprocess.run(
-        ["git", "remote", "get-url", "origin"],
-        cwd=repo_path,
-        capture_output=True,
-        text=True,
-    )
-    url = result.stdout.strip()
-    url = url.replace("git@github.com:", "").replace("https://github.com/", "")
-    return url.removesuffix(".git")
 
 
 def _commit_and_push(repo_path: Path, branch_name: str, slug: str) -> None:
     """Commit CI fix changes and push."""
+    roxy_token_path = Path.home() / ".roxy_github_token"
     repo_env = os.environ.copy()
-    if ROXY_GITHUB_TOKEN.exists():
-        repo_env["GH_TOKEN"] = ROXY_GITHUB_TOKEN.read_text().strip()
+    if roxy_token_path.exists():
+        repo_env["GH_TOKEN"] = roxy_token_path.read_text().strip()
 
     _run_git_in_target(
         ["add", "."],
@@ -327,17 +246,27 @@ def fix_ci(repo_path: Path, pr_url: str | None) -> None:
     """
     repo_path = repo_path.resolve()
 
-    # ── Resolve PR URL ───────────────────────────────────────────────────────
+    # ── Resolve PR info ───────────────────────────────────────────────────────
+    pr_number: int | None = None
     if pr_url is None:
-        pr_url = _get_pr_url(repo_path)
-    if not pr_url:
+        pr_info = _get_pr_info(repo_path)
+        if pr_info:
+            pr_url = pr_info.get("url") or pr_info.get("html_url")
+            pr_number = pr_info.get("number")
+    else:
+        # Parse PR number from URL
+        m = re.search(r"/pull/(\d+)", pr_url)
+        if m:
+            pr_number = int(m.group(1))
+
+    if not pr_url or pr_number is None:
         raise click.UsageError("Could not determine PR URL. Pass --pr <url> or run from a branch with an open PR.")
 
     console.print(f"\n[bold]agent-design fix-ci[/bold] — [cyan]{pr_url}[/cyan]\n")
 
     # ── Fetch CI failures ────────────────────────────────────────────────────
     console.print("[dim]Fetching CI check results...[/dim]")
-    failures = _fetch_ci_failures(pr_url)
+    failures = _fetch_ci_failures(repo_path, pr_number)
 
     if failures is None:
         console.print("[green]✓ CI is passing — nothing to fix.[/green]")
