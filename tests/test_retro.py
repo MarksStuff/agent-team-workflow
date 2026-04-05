@@ -146,7 +146,7 @@ class TestRetroProjectSlugDerivation:
 
         captured: list[dict] = []
 
-        def capture_build(project_slug: str, date: str) -> str:
+        def capture_build(project_slug: str, date: str, human_observation: str | None = None) -> str:
             captured.append({"project_slug": project_slug})
             return "prompt"
 
@@ -167,7 +167,7 @@ class TestRetroProjectSlugDerivation:
         # No ROUND_STATE.json written
         captured: list[dict] = []
 
-        def capture_build(project_slug: str, date: str) -> str:
+        def capture_build(project_slug: str, date: str, human_observation: str | None = None) -> str:
             captured.append({"project_slug": project_slug})
             return "prompt"
 
@@ -200,7 +200,7 @@ class TestRetroCallsBuildRetroStart:
 
         captured_slugs: list[str] = []
 
-        def capture_build(project_slug: str, date: str) -> str:
+        def capture_build(project_slug: str, date: str, human_observation: str | None = None) -> str:
             captured_slugs.append(project_slug)
             return "prompt"
 
@@ -219,7 +219,7 @@ class TestRetroCallsBuildRetroStart:
 
         captured_dates: list[str] = []
 
-        def capture_build(project_slug: str, date: str) -> str:
+        def capture_build(project_slug: str, date: str, human_observation: str | None = None) -> str:
             captured_dates.append(date)
             return "prompt"
 
@@ -312,3 +312,64 @@ class TestRetroErrorHandling:
             result = runner.invoke(retro_cmd, ["--repo-path", str(tmp_path)])
 
         assert result.exit_code == 0
+
+
+# ---------------------------------------------------------------------------
+# --observation option
+# ---------------------------------------------------------------------------
+
+
+class TestRetroObservationOption:
+    """--observation passes human input to build_retro_start."""
+
+    def test_observation_option_accepted(self, tmp_path: Path) -> None:
+        """--observation is a valid option and the command exits 0."""
+        from agent_design.cli.commands.retro import retro as retro_cmd
+
+        runner = CliRunner()
+        with (
+            patch("agent_design.cli.commands.retro.run_print_team", return_value=0),
+            patch("agent_design.cli.commands.retro.build_retro_start", return_value="prompt"),
+        ):
+            result = runner.invoke(retro_cmd, ["--repo-path", str(tmp_path), "--observation", "tests are too slow"])
+        assert result.exit_code == 0
+
+    def test_observation_passed_to_build_retro_start(self, tmp_path: Path) -> None:
+        """When --observation is given, build_retro_start receives it as human_observation."""
+        from agent_design.cli.commands.retro import retro as retro_cmd
+
+        captured: list[str | None] = []
+
+        def capture_build(project_slug: str, date: str, human_observation: str | None = None) -> str:
+            captured.append(human_observation)
+            return "prompt"
+
+        runner = CliRunner()
+        with (
+            patch("agent_design.cli.commands.retro.run_print_team", return_value=0),
+            patch("agent_design.cli.commands.retro.build_retro_start", side_effect=capture_build),
+        ):
+            runner.invoke(retro_cmd, ["--repo-path", str(tmp_path), "--observation", "tests are too slow"])
+
+        assert len(captured) == 1
+        assert captured[0] == "tests are too slow"
+
+    def test_observation_none_when_omitted(self, tmp_path: Path) -> None:
+        """When --observation is not given, build_retro_start receives human_observation=None."""
+        from agent_design.cli.commands.retro import retro as retro_cmd
+
+        captured: list[str | None] = []
+
+        def capture_build(project_slug: str, date: str, human_observation: str | None = None) -> str:
+            captured.append(human_observation)
+            return "prompt"
+
+        runner = CliRunner()
+        with (
+            patch("agent_design.cli.commands.retro.run_print_team", return_value=0),
+            patch("agent_design.cli.commands.retro.build_retro_start", side_effect=capture_build),
+        ):
+            runner.invoke(retro_cmd, ["--repo-path", str(tmp_path)])
+
+        assert len(captured) == 1
+        assert captured[0] is None

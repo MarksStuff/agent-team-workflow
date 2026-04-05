@@ -43,12 +43,19 @@ def _get_project_slug(repo_path: Path) -> str:
     default=".",
     help="Path to the target repository (default: current dir)",
 )
-def retro(repo_path: Path) -> None:
+@click.option(
+    "--observation",
+    default=None,
+    help="Human observation to seed the retrospective as a first-class input",
+)
+def retro(repo_path: Path, observation: str | None) -> None:
     """Run a sprint retrospective session for the current project.
 
-    Launches a --print multi-agent session where the Retrospective Facilitator
-    reads DISCUSSION.md, TASKS.md, and DECISIONS.md, identifies friction points,
-    coordinates agent memory self-updates, and produces RETRO.md.
+    Launches a multi-agent retrospective: the Facilitator shares sprint
+    artifacts with the full team, each agent reflects independently, the
+    team votes on the top good/bad items, discusses root causes and
+    improvements, claims action items for their own memory, and produces
+    RETRO.md. Unclaimed items are flagged as possible missing agent roles.
     """
     repo_path = repo_path.resolve()
     project_slug = _get_project_slug(repo_path)
@@ -63,7 +70,7 @@ def retro(repo_path: Path) -> None:
         )
     )
 
-    start_message = build_retro_start(project_slug=project_slug, date=today)
+    start_message = build_retro_start(project_slug=project_slug, date=today, human_observation=observation)
     worktree_path = repo_path / ".agent-design"
     rc = run_print_team(worktree_path, repo_path, start_message)
     if rc != 0:

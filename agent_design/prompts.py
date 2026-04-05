@@ -243,39 +243,97 @@ def build_remember_start(
 _RETRO_MESSAGE = """\
 Sprint retrospective for project: {project_slug}
 Date: {date}
+{observation_block}
+You are the Retrospective Facilitator. Your job is to FACILITATE — not to do the work yourself.
+Spawn the full team immediately. Every agent must participate in every phase.
 
-You are the Retrospective Facilitator. Run a structured retrospective:
+---
 
-1. Read the following files (if they exist):
-   - DISCUSSION.md — team discussion log
-   - TASKS.md — implementation task board
-   - DECISIONS.md — resolved and deadlocked decisions
+## Phase 1 — Gather and share the material
 
-2. Identify friction patterns: repeated blockers, communication gaps, design
-   gaps discovered late, test/implementation ordering issues, anything that
-   slowed the team down.
+Read these files (if they exist) and write a concise factual summary:
+- DISCUSSION.md — team discussion log
+- DECISIONS.md — resolved and deadlocked decisions
+- ../TASKS.md — implementation task board (one directory up, at the repo root)
 
-3. Address each agent in turn. Ask them to self-update their own memory file
-   at <CORE>/memory/<their-name>.md (where CORE is the path from
-   ~/.agent-design/core_plugin_dir) with any lessons from this sprint.
-   Use the established format (## Corrections & Overrides, YYYY-MM-DD [project]).
+Share the summary with the whole team via SendMessage. Do not editorialize.
+This is facts only — what was built, what was decided, what was blocked.
 
-4. Verify pickup: confirm that at least one agent has self-updated. If no
-   agent self-updated after a substantive sprint, flag it and prompt the most
-   relevant agent to reconsider.
+---
 
-5. Produce RETRO.md in the current directory with this exact format:
+## Phase 2 — Independent reflection (parallel)
+
+Message every team member individually:
+  "Read the sprint summary. Independently list:
+   1. What went well? (observations and facts only — not solutions yet)
+   2. What went badly? (observations and facts only — not solutions yet)
+   Reply with your lists before discussing with others."
+
+Wait for replies from all agents. If anyone is silent after a reasonable wait,
+call them out by name: "I need your reflection list before we continue."
+
+---
+
+## Phase 3 — Pool and prioritise
+
+Collect all items from all agents. Present the full combined list to the team:
+  "Here are all the observations. Vote: which 3 items from the 'went well' list
+   matter most? Which 3 from the 'went badly' list matter most?
+   Reply with your top 3 from each."
+
+Tally the votes. Announce the winning top 3 good and top 3 bad to the team.
+If there are ties, facilitate a short discussion to break them.
+
+---
+
+## Phase 4 — Discuss and decide
+
+For each of the 6 items (top 3 good, top 3 bad), facilitate a team discussion:
+- Good items: "What specifically made this work? How do we reinforce it?"
+- Bad items: "What specifically caused this? What would prevent it next time?"
+
+Ensure every agent contributes to at least one item's discussion.
+If someone is silent on an item that clearly touches their role, call them out.
+
+---
+
+## Phase 5 — Ownership
+
+Present the consolidated action items to the full team:
+  "For each action item below, which of you should act on it?
+   If it's relevant to your role, say so and update your memory file now.
+   Memory file: <CORE>/memory/<your-name>.md (CORE = path from ~/.agent-design/core_plugin_dir)
+   Use the format: ## Corrections & Overrides / YYYY-MM-DD [project]"
+
+**If any action item is claimed by nobody:**
+Flag it explicitly: "No agent claimed this item — this may indicate we are
+missing an agent role. Document it under 'Unowned Items' in RETRO.md."
+
+---
+
+## Phase 6 — Produce RETRO.md
+
+Write RETRO.md in the current directory with this exact format:
 
 # Retrospective — {project_slug} — {date}
-## What Went Well
-## Friction Points
-## Action Items
-## Prompt Suggestions (pending human review)
-- [PS-1] <agent-file>.md: <suggestion text>
 
-The Prompt Suggestions section lists concrete wording changes to agent
-definition files that would address the friction points. Do not write to
-other agents' memory files directly — each agent self-updates.
+## What Went Well (top 3)
+1. <item> — <what to reinforce>
+
+## What Went Badly (top 3)
+1. <item> — <what to change>
+
+## Action Items
+- <who>: <what>
+
+## Unowned Items (possible missing agent role)
+- <item> — <why no agent claimed it>
+
+## Prompt Suggestions (pending human review)
+- [PS-1] <agent-file>.md: <concrete wording change that addresses a bad item>
+
+Prompt Suggestions must be concrete wording edits to agent definition files —
+not vague intentions. They address root causes of the bad items.
 """
 
 _APPLY_SUGGESTION_MESSAGE = """\
@@ -298,20 +356,30 @@ Steps:
 """
 
 
-def build_retro_start(project_slug: str, date: str) -> str:
+def build_retro_start(project_slug: str, date: str, human_observation: str | None = None) -> str:
     """Build the start message for a retrospective session.
 
-    Instructs the Retrospective Facilitator to read sprint artefacts,
-    coordinate agent memory self-updates, and produce RETRO.md.
+    Instructs the Retrospective Facilitator to run a team retrospective:
+    independent reflection, pooled voting, discussion, ownership assignment,
+    and RETRO.md production.
 
     Args:
         project_slug: Short identifier for the project (e.g., 'news-reader')
         date: Date string for the retrospective (e.g., '2026-04-05')
+        human_observation: Optional human observation to seed the retro
 
     Returns:
         Start message string for run_print_team()
     """
-    return _RETRO_MESSAGE.format(project_slug=project_slug, date=date).strip()
+    if human_observation:
+        observation_block = f"\nHuman observation (treat as a first-class input alongside the sprint artifacts):\n  {human_observation}\n"
+    else:
+        observation_block = ""
+    return _RETRO_MESSAGE.format(
+        project_slug=project_slug,
+        date=date,
+        observation_block=observation_block,
+    ).strip()
 
 
 def build_apply_suggestion_start(suggestion_id: str, agent_file: str, suggestion_text: str) -> str:
