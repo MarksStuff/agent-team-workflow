@@ -362,13 +362,18 @@ The following CI checks are failing:
 
 {ci_failures}
 
-Your task:
-1. Read the CI failure output above carefully.
-2. Fix ONLY what CI reports as failing — do not refactor unrelated code.
-3. Run tests locally to confirm they pass before finishing.
+Your task as Eng Manager:
+1. Read the CI failure output above carefully and identify what type of failure it is
+   (test failure, lint error, type error, etc.).
+2. Spawn the appropriate specialist(s) to fix it — do not fix it yourself.
+   For test/code failures: spawn tdd_focused_engineer and developer.
+   For lint/type errors: developer is sufficient.
+   For ambiguous failures: spawn the full team.
+3. Instruct the specialist(s) to fix ONLY what CI reports as failing — no unrelated
+   refactors — and to run tests locally to confirm green before finishing.
 4. Do not introduce new failures while fixing existing ones.
 
-Fix the failing checks now. Do not ask for confirmation.""".strip()
+Spawn the team now. Do not ask for confirmation.""".strip()
 
 
 def build_review_feedback_start(pr_comments: str, pr_url: str, available_specialists: str | None = None) -> str:
