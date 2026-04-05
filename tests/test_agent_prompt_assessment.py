@@ -34,9 +34,7 @@ class TestMemoryFileSectionAllAgents:
 
     def _assert_memory_path_instruction(self, path: Path) -> None:
         content = _content(path)
-        assert "$AGENT_CORE_PLUGIN_DIR/memory/" in content, (
-            f"{path.name} is missing the memory path '$AGENT_CORE_PLUGIN_DIR/memory/'"
-        )
+        assert "core_plugin_dir" in content, f"{path.name} is missing the memory path 'core_plugin_dir'"
 
     def _assert_memory_update_triggers(self, path: Path) -> None:
         content = _content(path)

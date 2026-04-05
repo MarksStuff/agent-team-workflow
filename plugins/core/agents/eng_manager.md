@@ -71,7 +71,7 @@ for a relevant specialist and spawn them. Log it in TASKS.md:
 
 ## Your memory file
 
-You have read/write access to $AGENT_CORE_PLUGIN_DIR/memory/eng_manager.md.
+At session start, read `~/.agent-design/core_plugin_dir` to get the absolute path to the core plugin (call it CORE). Your memory file is at `<CORE>/memory/eng_manager.md`.
 
 Update it yourself when:
 - A human corrects or overrides something you proposed

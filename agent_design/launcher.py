@@ -27,12 +27,23 @@ def _plugin_flags() -> list[str]:
     return flags
 
 
-def _plugin_env(base: dict[str, str]) -> dict[str, str]:
-    """Inject AGENT_CORE_PLUGIN_DIR and AGENT_LOCAL_PLUGIN_DIR into an env dict.
+def _write_plugin_root() -> None:
+    """Write the absolute PLUGIN_CORE path to ~/.agent-design/core_plugin_dir.
 
-    Agents read these variables to locate their memory files and peer agent
-    definitions without hardcoding any paths.
+    Called before every Claude session. Agents read this file at session start
+    (one Read tool call) to discover the absolute path to the core plugin
+    without needing to expand environment variables.
+
+    The file is machine-local ephemeral config — it changes whenever the repo
+    is moved or cloned to a different location.
     """
+    config_dir = Path.home() / ".agent-design"
+    config_dir.mkdir(exist_ok=True)
+    (config_dir / "core_plugin_dir").write_text(str(PLUGIN_CORE))
+
+
+def _plugin_env(base: dict[str, str]) -> dict[str, str]:
+    """Inject AGENT_CORE_PLUGIN_DIR and AGENT_LOCAL_PLUGIN_DIR into an env dict."""
     env = base.copy()
     env["AGENT_CORE_PLUGIN_DIR"] = str(PLUGIN_CORE)
     env["AGENT_LOCAL_PLUGIN_DIR"] = str(PLUGIN_LOCAL)
@@ -75,6 +86,7 @@ def run_solo(
     Returns:
         Exit code from claude process
     """
+    _write_plugin_root()
     env = _plugin_env(os.environ.copy())
     api_key = _get_api_key()
     if api_key:
@@ -130,6 +142,7 @@ def run_print_team(
     Returns:
         Exit code from claude process
     """
+    _write_plugin_root()
     env = _plugin_env(os.environ.copy())
     api_key = _get_api_key()
     if api_key:
@@ -188,6 +201,7 @@ def run_team(
     Returns:
         Exit code from claude process
     """
+    _write_plugin_root()
     env = _plugin_env(os.environ.copy())
     api_key = _get_api_key()
     if api_key:
@@ -234,6 +248,7 @@ def run_team_in_repo(
     Returns:
         Exit code from claude process
     """
+    _write_plugin_root()
     env = _plugin_env(os.environ.copy())
     api_key = _get_api_key()
     if api_key:

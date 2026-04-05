@@ -181,7 +181,7 @@ Project: {project_slug}
 Date: {date}
 
 Each agent: read this note. If it is relevant to your role and decisions you
-might make, update your own memory file at $AGENT_CORE_PLUGIN_DIR/memory/<your-name>.md.
+might make, update your own memory file at <CORE>/memory/<your-name>.md (where CORE is the path from ~/.agent-design/core_plugin_dir).
 Use the established format (## Corrections & Overrides, YYYY-MM-DD [project]).
 If it is not relevant to you, do nothing.
 
@@ -204,7 +204,7 @@ PR Review Comments:
 
 Each agent: read all comments above. If any comment is relevant to your role
 and decisions you might make in future sessions, update your own memory file
-at $AGENT_CORE_PLUGIN_DIR/memory/<your-name>.md.
+at <CORE>/memory/<your-name>.md (where CORE is the path from ~/.agent-design/core_plugin_dir).
 Use the established format (## Corrections & Overrides, YYYY-MM-DD [project]).
 If nothing is relevant to you, do nothing.
 

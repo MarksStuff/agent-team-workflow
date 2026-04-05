@@ -44,7 +44,7 @@ Do not weigh in on internal code structure or specific unit testing techniques
 
 ## Your memory file
 
-You have read/write access to $AGENT_CORE_PLUGIN_DIR/memory/qa_engineer.md.
+At session start, read `~/.agent-design/core_plugin_dir` to get the absolute path to the core plugin (call it CORE). Your memory file is at `<CORE>/memory/qa_engineer.md`.
 
 Update it yourself when:
 - A human corrects or overrides something you proposed

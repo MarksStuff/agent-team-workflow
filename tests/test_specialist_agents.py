@@ -10,7 +10,7 @@ Covers AC1–AC6 from DESIGN.md "Acceptance Criteria — Phase 6":
   AC4  — Body contains "Spawned when:" section
   AC5  — Body contains "Does not" section (all 6 files, not just PM)
   AC6  — Body contains "## Your memory file" section, correct path pattern
-          ($AGENT_CORE_PLUGIN_DIR/memory/<name>.md), and no-permission statement
+          (core_plugin_dir<name>.md), and no-permission statement
 
 AC7 (symlinks) is a manual QA verification task — not tested here.
 AC8 (no regressions) is covered by running the full test suite.
@@ -482,7 +482,7 @@ class TestMemoryFileSectionSpecialists:
     """
     AC6: Every specialist file must have:
     1. "## Your memory file" header in the body
-    2. The correct memory path pattern: $AGENT_CORE_PLUGIN_DIR/memory/<name>.md
+    2. The correct memory path pattern: core_plugin_dir<name>.md
        where <name> matches the frontmatter 'name' field exactly
     3. "You do not need permission to update your own memory" statement
     """
@@ -495,9 +495,11 @@ class TestMemoryFileSectionSpecialists:
         fm = _frontmatter(path)
         name = fm.get("name", "")
         body = _body(path)
-        expected_path = f"$AGENT_CORE_PLUGIN_DIR/memory/{name}.md"
-        assert expected_path in body, (
-            f"{path.name}: memory section must reference path '{expected_path}' (name from frontmatter: '{name}')"
+        # Agent memory files now live at <CORE>/memory/<name>.md where CORE is
+        # resolved at session start from ~/.agent-design/core_plugin_dir
+        assert "core_plugin_dir" in body, f"{path.name}: memory section must reference 'core_plugin_dir' sentinel"
+        assert f"memory/{name}.md" in body, (
+            f"{path.name}: memory section must reference path 'memory/{name}.md' (name from frontmatter: '{name}')"
         )
 
     def _assert_no_permission_statement(self, path: Path) -> None:
