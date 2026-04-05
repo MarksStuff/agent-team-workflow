@@ -86,11 +86,58 @@ def _get_pr_url(repo_path: Path) -> str | None:
     return str(pulls[0].get("html_url", "")) or None
 
 
+def _fetch_check_run_details(repo: str, check_run: dict) -> str:
+    """Fetch detailed failure info for a single check run.
+
+    Returns a formatted string with the output summary/text and annotations.
+    Falls back gracefully if any API call fails.
+    """
+    name = check_run.get("name", "unknown")
+    conclusion = check_run.get("conclusion", "")
+    check_run_id = check_run.get("id")
+    lines: list[str] = [f"### {name} ({conclusion})"]
+
+    # Include the check run output summary/text if present
+    output = check_run.get("output") or {}
+    if output.get("title"):
+        lines.append(f"Title: {output['title']}")
+    if output.get("summary"):
+        lines.append(output["summary"].strip())
+    if output.get("text"):
+        lines.append(output["text"].strip())
+
+    # Fetch annotations for this check run
+    if check_run_id:
+        ann_result = _gh("api", f"repos/{repo}/check-runs/{check_run_id}/annotations")
+        if ann_result.returncode == 0:
+            try:
+                annotations = json.loads(ann_result.stdout)
+            except json.JSONDecodeError:
+                annotations = []
+            failure_anns = [a for a in annotations if a.get("annotation_level") in ("failure", "warning")]
+            if failure_anns:
+                lines.append("Annotations:")
+                for ann in failure_anns[:20]:  # cap at 20 to keep prompt size reasonable
+                    path = ann.get("path", "")
+                    start_line = ann.get("start_line", "")
+                    msg = ann.get("message", "").strip()
+                    title = ann.get("title", "")
+                    loc = f"{path}:{start_line}" if path else ""
+                    label = title or msg[:80]
+                    detail = msg if title and msg != title else ""
+                    ann_line = f"  [{loc}] {label}"
+                    if detail:
+                        ann_line += f"\n    {detail[:200]}"
+                    lines.append(ann_line)
+
+    return "\n".join(lines)
+
+
 def _fetch_ci_failures(pr_url: str) -> str | None:
     """Fetch CI check results for the given PR URL via the REST API.
 
-    Returns a formatted failure string describing the failing checks,
-    or None if all checks are passing / no failures found.
+    Returns a formatted failure string with check names, output summaries,
+    and annotations for each failing check, or None if all checks are passing.
     """
     parsed = _parse_pr_url(pr_url)
     if not parsed:
@@ -120,8 +167,8 @@ def _fetch_ci_failures(pr_url: str) -> str | None:
     if not failing:
         return None
 
-    failing_names = "\n".join(f"  • {c['name']}: {c.get('conclusion')}" for c in failing)
-    return f"Failing checks:\n{failing_names}"
+    sections = [_fetch_check_run_details(repo, c) for c in failing]
+    return "Failing checks:\n\n" + "\n\n".join(sections)
 
 
 def _get_repo_name(repo_path: Path) -> str:
