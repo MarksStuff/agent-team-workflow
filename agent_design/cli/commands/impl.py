@@ -126,30 +126,49 @@ def _commit_and_push(
 def _check_ci_status(pr_url: str | None) -> None:
     """Check CI status for the given PR URL and print a summary.
 
+    Uses the REST API to avoid GraphQL dependency.
     Does nothing if pr_url is None (e.g. PR creation failed earlier).
     """
     import json as _json
+    import re as _re
 
     if pr_url is None:
         return
 
-    result = _gh("pr", "checks", pr_url, "--json", "name,state,conclusion")
-    if result.returncode != 0:
+    m = _re.search(r"github\.com/([^/]+/[^/]+)/pull/(\d+)", pr_url)
+    if not m:
+        console.print("[yellow]⚠ Could not parse PR URL — check CI manually.[/yellow]")
+        return
+    repo, pr_number = m.group(1), m.group(2)
+
+    # Get PR head SHA via REST
+    pr_result = _gh("api", f"repos/{repo}/pulls/{pr_number}", "--jq", ".head.sha")
+    if pr_result.returncode != 0:
+        console.print("[yellow]⚠ Could not fetch PR info — check CI manually.[/yellow]")
+        return
+    sha = pr_result.stdout.strip()
+
+    # Get check runs for that commit via REST
+    runs_result = _gh("api", f"repos/{repo}/commits/{sha}/check-runs")
+    if runs_result.returncode != 0:
         console.print("[yellow]⚠ Could not fetch CI status — check the PR manually.[/yellow]")
         return
 
     try:
-        checks = _json.loads(result.stdout)
+        data = _json.loads(runs_result.stdout)
     except _json.JSONDecodeError:
         console.print("[yellow]⚠ Could not parse CI check output — check the PR manually.[/yellow]")
         return
 
-    if not checks:
+    check_runs = data.get("check_runs", [])
+    if not check_runs:
         console.print("[yellow]⚠ CI checks are still running — use fix-ci if they fail.[/yellow]")
         return
 
-    failing = [c["name"] for c in checks if c.get("state") == "fail"]
-    pending = [c for c in checks if c.get("state") == "pending"]
+    failing = [
+        c["name"] for c in check_runs if c.get("conclusion") in ("failure", "timed_out", "cancelled", "action_required")
+    ]
+    pending = [c for c in check_runs if c.get("status") in ("queued", "in_progress")]
 
     if failing:
         console.print("[red]✗ CI failed — run 'agent-design fix-ci' to fix.[/red]")

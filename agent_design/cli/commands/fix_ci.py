@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -26,46 +27,101 @@ def _gh(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(["gh", *args], capture_output=True, text=True, env=env)
 
 
-def _get_pr_url(repo_path: Path) -> str | None:
-    """Detect the PR URL for the current branch in repo_path.
+def _parse_pr_url(pr_url: str) -> tuple[str, str] | None:
+    """Parse 'owner/repo' and PR number from a GitHub PR URL.
 
+    Returns (repo, pr_number) or None if the URL doesn't match.
+    """
+    m = re.search(r"github\.com/([^/]+/[^/]+)/pull/(\d+)", pr_url)
+    if not m:
+        return None
+    return m.group(1), m.group(2)
+
+
+def _get_pr_url(repo_path: Path) -> str | None:
+    """Detect the PR URL for the current branch in repo_path via REST API.
+
+    Gets the current branch from git, then queries the GitHub REST API
+    to find an open PR for that branch. Avoids GraphQL dependency.
     Returns the URL string or None if not on a PR branch.
     """
-    result = _gh("pr", "view", "--json", "url", "-q", ".url")
-    if result.returncode == 0:
-        url = result.stdout.strip()
-        return url if url else None
-    return None
+    # Get current branch name
+    branch_result = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+    )
+    if branch_result.returncode != 0:
+        return None
+    branch = branch_result.stdout.strip()
+    if not branch or branch == "HEAD":
+        return None
+
+    # Get owner/repo from remote
+    remote_result = subprocess.run(
+        ["git", "remote", "get-url", "origin"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+    )
+    if remote_result.returncode != 0:
+        return None
+    remote_url = remote_result.stdout.strip()
+    m = re.search(r"github\.com[:/]([^/]+/[^/\s]+?)(?:\.git)?$", remote_url)
+    if not m:
+        return None
+    repo = m.group(1)
+
+    # Find open PRs for this branch via REST
+    result = _gh("api", f"repos/{repo}/pulls?head={repo.split('/')[0]}:{branch}&state=open")
+    if result.returncode != 0:
+        return None
+    try:
+        pulls = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not pulls:
+        return None
+    return str(pulls[0].get("html_url", "")) or None
 
 
 def _fetch_ci_failures(pr_url: str) -> str | None:
-    """Fetch CI check results for the given PR URL.
+    """Fetch CI check results for the given PR URL via the REST API.
 
     Returns a formatted failure string describing the failing checks,
     or None if all checks are passing / no failures found.
     """
-    json_result = _gh("pr", "checks", pr_url, "--json", "name,state,conclusion")
-    if json_result.returncode != 0:
+    parsed = _parse_pr_url(pr_url)
+    if not parsed:
+        return None
+    repo, pr_number = parsed
+
+    # Get PR head SHA via REST
+    pr_result = _gh("api", f"repos/{repo}/pulls/{pr_number}", "--jq", ".head.sha")
+    if pr_result.returncode != 0:
+        return None
+    sha = pr_result.stdout.strip()
+    if not sha:
+        return None
+
+    # Get check runs for that commit via REST
+    runs_result = _gh("api", f"repos/{repo}/commits/{sha}/check-runs")
+    if runs_result.returncode != 0:
         return None
 
     try:
-        checks = json.loads(json_result.stdout)
+        data = json.loads(runs_result.stdout)
     except json.JSONDecodeError:
         return None
 
-    failing = [c for c in checks if c.get("state") == "fail"]
+    check_runs = data.get("check_runs", [])
+    failing = [c for c in check_runs if c.get("conclusion") in ("failure", "timed_out", "cancelled", "action_required")]
     if not failing:
         return None
 
-    # Also fetch human-readable detail
-    text_result = _gh("pr", "checks", pr_url)
-    detail = text_result.stdout.strip() if text_result.returncode == 0 else ""
-
-    failing_names = "\n".join(f"  • {c['name']}" for c in failing)
-    parts = [f"Failing checks:\n{failing_names}"]
-    if detail:
-        parts.append(f"\nFull check output:\n{detail}")
-    return "\n".join(parts)
+    failing_names = "\n".join(f"  • {c['name']}: {c.get('conclusion')}" for c in failing)
+    return f"Failing checks:\n{failing_names}"
 
 
 def _get_repo_name(repo_path: Path) -> str:
