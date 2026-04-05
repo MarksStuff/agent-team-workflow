@@ -126,6 +126,7 @@ def _fetch_job_log_failures(repo: str, job_id: str | int) -> str | None:
     """
     result = _gh("api", f"repos/{repo}/actions/jobs/{job_id}/logs")
     if result.returncode != 0 or not result.stdout:
+        console.print(f"[dim]  ↳ job logs API rc={result.returncode}, stderr={result.stderr[:120].strip()}[/dim]")
         return None
     return _extract_test_failures(result.stdout)
 
@@ -153,15 +154,20 @@ def _fetch_check_run_details(repo: str, check_run: dict) -> str:
 
     # For GitHub Actions jobs, fetch the real log output
     app = check_run.get("app") or {}
+    app_slug = app.get("slug", "")
     external_id = check_run.get("external_id", "")
-    if app.get("slug") == "github-actions" and external_id:
+    console.print(f"[dim]  ↳ check run: app={app_slug!r} external_id={external_id!r} id={check_run_id}[/dim]")
+    if app_slug == "github-actions" and external_id:
         log_section = _fetch_job_log_failures(repo, external_id)
         if log_section:
             lines.append("Job log (failure section):")
             lines.append(log_section)
+        else:
+            console.print("[dim]  ↳ no log section extracted[/dim]")
     elif check_run_id:
         # Non-Actions check: use annotations
         ann_result = _gh("api", f"repos/{repo}/check-runs/{check_run_id}/annotations")
+        console.print(f"[dim]  ↳ annotations API rc={ann_result.returncode}[/dim]")
         if ann_result.returncode == 0:
             try:
                 annotations = json.loads(ann_result.stdout)
