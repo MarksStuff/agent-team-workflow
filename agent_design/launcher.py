@@ -11,6 +11,26 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+# Plugin directories bundled in this repository.
+# core/  — general-purpose agents (architect, developer, tdd_focused_engineer, …)
+# local/ — project/domain-specific agents for agent-team-workflow itself
+_REPO_ROOT = Path(__file__).parent.parent
+_PLUGIN_CORE = _REPO_ROOT / "plugins" / "core"
+_PLUGIN_LOCAL = _REPO_ROOT / "plugins" / "local"
+
+
+def _plugin_flags() -> list[str]:
+    """Return --plugin-dir flags for the two bundled plugins.
+
+    Only includes a plugin directory if it actually exists on disk, so the
+    launcher degrades gracefully on machines where the repo is partially cloned.
+    """
+    flags: list[str] = []
+    for plugin_dir in (_PLUGIN_CORE, _PLUGIN_LOCAL):
+        if plugin_dir.exists():
+            flags += ["--plugin-dir", str(plugin_dir)]
+    return flags
+
 
 def _get_api_key() -> str | None:
     """Get Anthropic API key from environment or ~/.anthropic_api_key.
@@ -39,8 +59,8 @@ def run_solo(
     Claude writes directly to files in worktree_path.
 
     Args:
-        agent_name: Name of the agent to run (e.g., 'architect'). Claude Code
-                    will load its definition from ~/.claude/agents/{agent_name}.md
+        agent_name: Name of the agent to run (e.g., 'architect'). Loaded from
+                    plugins/core/agents/{agent_name}.md via --plugin-dir.
         task_prompt: Stage-specific task instructions
         worktree_path: Path to .agent-design/ worktree (claude's working dir)
         target_repo: Path to target repo (added as readable directory)
@@ -66,9 +86,10 @@ def run_solo(
                 "--strict-mcp-config",
                 "--mcp-config",
                 mcp_config_path,
+                *_plugin_flags(),
                 "--add-dir",
                 str(target_repo),
-                "--agent",  # Use --agent flag here
+                "--agent",
                 agent_name,
                 "--",
                 task_prompt,
@@ -121,6 +142,7 @@ def run_print_team(
                 "--strict-mcp-config",
                 "--mcp-config",
                 mcp_config_path,
+                *_plugin_flags(),
                 "--add-dir",
                 str(target_repo),
                 "--agent",
@@ -169,6 +191,7 @@ def run_team(
         [
             "claude",
             "--dangerously-skip-permissions",
+            *_plugin_flags(),
             "--agent",
             "eng_manager",
             "--add-dir",
@@ -214,6 +237,7 @@ def run_team_in_repo(
         [
             "claude",
             "--dangerously-skip-permissions",
+            *_plugin_flags(),
             "--agent",
             "eng_manager",
             "--add-dir",
