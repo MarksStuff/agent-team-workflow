@@ -279,7 +279,7 @@ def test_build_feedback_start_no_longer_importable() -> None:
 # 1. correction text appears verbatim
 # 2. project_slug appears (for YYYY-MM-DD [project] memory format)
 # 3. date appears
-# 4. "~/.claude/agent-memory/" path pattern
+# 4. "$AGENT_CORE_PLUGIN_DIR/memory/" path pattern
 # 5. "## Corrections & Overrides" section header
 # 6. Retrospective Facilitator pickup instruction
 # ---------------------------------------------------------------------------
@@ -327,7 +327,7 @@ def test_build_remember_start_contains_date() -> None:
 
 
 def test_build_remember_start_references_agent_memory_path() -> None:
-    """Token 4: the prompt references the ~/.claude/agent-memory/ path pattern."""
+    """Token 4: the prompt references the $AGENT_CORE_PLUGIN_DIR/memory/ path pattern."""
     from agent_design.prompts import build_remember_start
 
     result = build_remember_start(
@@ -335,7 +335,7 @@ def test_build_remember_start_references_agent_memory_path() -> None:
         project_slug="my-project",
         date="2026-04-04",
     )
-    assert "~/.claude/agent-memory/" in result, "Expected '~/.claude/agent-memory/' path in prompt"
+    assert "$AGENT_CORE_PLUGIN_DIR/memory/" in result, "Expected '$AGENT_CORE_PLUGIN_DIR/memory/' path in prompt"
 
 
 def test_build_remember_start_contains_corrections_and_overrides_header() -> None:
@@ -422,7 +422,7 @@ def test_build_remember_start_accepts_available_specialists_kwarg() -> None:
 # Required output tokens:
 # 1. pr_url appears
 # 2. pr_comments appears verbatim
-# 3. "~/.claude/agent-memory/" path pattern
+# 3. "$AGENT_CORE_PLUGIN_DIR/memory/" path pattern
 # 4. Retrospective Facilitator pickup instruction
 # ---------------------------------------------------------------------------
 
@@ -480,14 +480,14 @@ def test_build_review_feedback_start_contains_date() -> None:
 
 
 def test_build_review_feedback_start_references_agent_memory_path() -> None:
-    """Token 3: the prompt references the ~/.claude/agent-memory/ path pattern."""
+    """Token 3: the prompt references the $AGENT_CORE_PLUGIN_DIR/memory/ path pattern."""
     from agent_design.prompts import build_review_feedback_start
 
     result = build_review_feedback_start(
         pr_comments="some comment",
         pr_url="https://github.com/o/r/pull/1",
     )
-    assert "~/.claude/agent-memory/" in result, "Expected '~/.claude/agent-memory/' path in prompt"
+    assert "$AGENT_CORE_PLUGIN_DIR/memory/" in result, "Expected '$AGENT_CORE_PLUGIN_DIR/memory/' path in prompt"
 
 
 def test_build_review_feedback_start_contains_facilitator_pickup_instruction() -> None:

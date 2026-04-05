@@ -7,7 +7,7 @@ All tests are expected to be RED until the Developer applies the changes.
 
 from pathlib import Path
 
-AGENT_DEFS = Path(__file__).parent.parent / "agent-definitions"
+AGENT_DEFS = Path(__file__).parent.parent / "plugins" / "core" / "agents"
 
 ENG_MANAGER = AGENT_DEFS / "eng_manager.md"
 ARCHITECT = AGENT_DEFS / "architect.md"
@@ -34,7 +34,9 @@ class TestMemoryFileSectionAllAgents:
 
     def _assert_memory_path_instruction(self, path: Path) -> None:
         content = _content(path)
-        assert "~/.claude/agent-memory/" in content, f"{path.name} is missing the memory path '~/.claude/agent-memory/'"
+        assert "$AGENT_CORE_PLUGIN_DIR/memory/" in content, (
+            f"{path.name} is missing the memory path '$AGENT_CORE_PLUGIN_DIR/memory/'"
+        )
 
     def _assert_memory_update_triggers(self, path: Path) -> None:
         content = _content(path)

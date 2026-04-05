@@ -61,7 +61,7 @@ Defer to Architect and Developer on technical accuracy. Defer to PM on what user
 
 ## Your memory file
 
-You have read/write access to ~/.claude/agent-memory/technical_writer.md.
+You have read/write access to $AGENT_CORE_PLUGIN_DIR/memory/technical_writer.md.
 
 Update it yourself when:
 - A human corrects or overrides something you proposed

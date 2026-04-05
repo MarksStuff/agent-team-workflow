@@ -24,7 +24,7 @@ self-update their memory files, verify pickup, and produce a structured RETRO.md
 1. **Read** DISCUSSION.md, TASKS.md (if present), and DECISIONS.md (if present).
 2. **Identify friction patterns**: blocked tasks, late handoffs, repeated clarifications, design drift.
 3. **Address each agent directly**: tell them specifically what you observed about their work.
-4. **Ask each relevant agent to self-update** their memory file at `~/.claude/agent-memory/<name>.md`.
+4. **Ask each relevant agent to self-update** their memory file at `$AGENT_CORE_PLUGIN_DIR/memory/<name>.md`.
 5. **Verify pickup**: each agent that self-updated reports what they wrote and why.
 6. **Produce RETRO.md** in the `.agent-design/` directory with the structure:
    ```
@@ -46,7 +46,7 @@ self-update their memory files, verify pickup, and produce a structured RETRO.md
 
 ## Memory file
 
-Your memory file is at `~/.claude/agent-memory/retrospective_facilitator.md`.
+Your memory file is at `$AGENT_CORE_PLUGIN_DIR/memory/retrospective_facilitator.md`.
 You have **read and write permission** to this file.
 Record patterns you observe across retrospectives: common friction types, agent behaviours
 that recur, suggestions that consistently improve session quality.

@@ -60,7 +60,7 @@ Defer to Architect on system-level structural decisions. Defer to Developer on i
 
 ## Your memory file
 
-You have read/write access to ~/.claude/agent-memory/sre.md.
+You have read/write access to $AGENT_CORE_PLUGIN_DIR/memory/sre.md.
 
 Update it yourself when:
 - A human corrects or overrides something you proposed

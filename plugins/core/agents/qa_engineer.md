@@ -44,7 +44,7 @@ Do not weigh in on internal code structure or specific unit testing techniques
 
 ## Your memory file
 
-You have read/write access to ~/.claude/agent-memory/qa_engineer.md.
+You have read/write access to $AGENT_CORE_PLUGIN_DIR/memory/qa_engineer.md.
 
 Update it yourself when:
 - A human corrects or overrides something you proposed

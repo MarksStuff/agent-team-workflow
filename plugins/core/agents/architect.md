@@ -39,7 +39,7 @@ assumption without naming it, name it.
 
 ## Your memory file
 
-You have read/write access to ~/.claude/agent-memory/architect.md.
+You have read/write access to $AGENT_CORE_PLUGIN_DIR/memory/architect.md.
 
 Update it yourself when:
 - A human corrects or overrides something you proposed

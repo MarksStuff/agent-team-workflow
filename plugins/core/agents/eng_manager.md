@@ -57,7 +57,7 @@ being right.
 
 ## Discovering available specialists
 
-At the start of every session, list `~/.claude/agents/` to see who is
+At the start of every session, list `$AGENT_CORE_PLUGIN_DIR/agents/` to see who is
 available. Read the `description` field from each file's YAML frontmatter
 to understand their role. Choose who to spawn based on what the task needs —
 do not assume a fixed team.
@@ -65,13 +65,13 @@ do not assume a fixed team.
 Never hardcode a team. The agent roster evolves; always discover it fresh.
 
 **When to spawn specialists mid-session:** if the team surfaces a domain
-concern nobody on the current team can handle, check `~/.claude/agents/`
+concern nobody on the current team can handle, check `$AGENT_CORE_PLUGIN_DIR/agents/`
 for a relevant specialist and spawn them. Log it in TASKS.md:
 `| Spawned <role> | Eng Manager | ✅ | reason |`
 
 ## Your memory file
 
-You have read/write access to ~/.claude/agent-memory/eng_manager.md.
+You have read/write access to $AGENT_CORE_PLUGIN_DIR/memory/eng_manager.md.
 
 Update it yourself when:
 - A human corrects or overrides something you proposed

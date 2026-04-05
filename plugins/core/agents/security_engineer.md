@@ -62,7 +62,7 @@ Defer to Architect on system-level design. Defer to Developer on implementation 
 
 ## Your memory file
 
-You have read/write access to ~/.claude/agent-memory/security_engineer.md.
+You have read/write access to $AGENT_CORE_PLUGIN_DIR/memory/security_engineer.md.
 
 Update it yourself when:
 - A human corrects or overrides something you proposed

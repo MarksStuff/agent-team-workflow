@@ -11,12 +11,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-# Plugin directories bundled in this repository.
-# core/  — general-purpose agents (architect, developer, tdd_focused_engineer, …)
-# local/ — project/domain-specific agents for agent-team-workflow itself
-_REPO_ROOT = Path(__file__).parent.parent
-_PLUGIN_CORE = _REPO_ROOT / "plugins" / "core"
-_PLUGIN_LOCAL = _REPO_ROOT / "plugins" / "local"
+from agent_design.config import PLUGIN_CORE, PLUGIN_LOCAL
 
 
 def _plugin_flags() -> list[str]:
@@ -26,10 +21,22 @@ def _plugin_flags() -> list[str]:
     launcher degrades gracefully on machines where the repo is partially cloned.
     """
     flags: list[str] = []
-    for plugin_dir in (_PLUGIN_CORE, _PLUGIN_LOCAL):
+    for plugin_dir in (PLUGIN_CORE, PLUGIN_LOCAL):
         if plugin_dir.exists():
             flags += ["--plugin-dir", str(plugin_dir)]
     return flags
+
+
+def _plugin_env(base: dict[str, str]) -> dict[str, str]:
+    """Inject AGENT_CORE_PLUGIN_DIR and AGENT_LOCAL_PLUGIN_DIR into an env dict.
+
+    Agents read these variables to locate their memory files and peer agent
+    definitions without hardcoding any paths.
+    """
+    env = base.copy()
+    env["AGENT_CORE_PLUGIN_DIR"] = str(PLUGIN_CORE)
+    env["AGENT_LOCAL_PLUGIN_DIR"] = str(PLUGIN_LOCAL)
+    return env
 
 
 def _get_api_key() -> str | None:
@@ -68,7 +75,7 @@ def run_solo(
     Returns:
         Exit code from claude process
     """
-    env = os.environ.copy()
+    env = _plugin_env(os.environ.copy())
     api_key = _get_api_key()
     if api_key:
         env["ANTHROPIC_API_KEY"] = api_key
@@ -123,7 +130,7 @@ def run_print_team(
     Returns:
         Exit code from claude process
     """
-    env = os.environ.copy()
+    env = _plugin_env(os.environ.copy())
     api_key = _get_api_key()
     if api_key:
         env["ANTHROPIC_API_KEY"] = api_key
@@ -181,7 +188,7 @@ def run_team(
     Returns:
         Exit code from claude process
     """
-    env = os.environ.copy()
+    env = _plugin_env(os.environ.copy())
     api_key = _get_api_key()
     if api_key:
         env["ANTHROPIC_API_KEY"] = api_key
@@ -227,7 +234,7 @@ def run_team_in_repo(
     Returns:
         Exit code from claude process
     """
-    env = os.environ.copy()
+    env = _plugin_env(os.environ.copy())
     api_key = _get_api_key()
     if api_key:
         env["ANTHROPIC_API_KEY"] = api_key

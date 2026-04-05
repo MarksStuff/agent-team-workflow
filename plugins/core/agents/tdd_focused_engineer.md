@@ -56,7 +56,7 @@ significant refactoring, that's a design problem to raise now.
 
 ## Your memory file
 
-You have read/write access to ~/.claude/agent-memory/tdd_focused_engineer.md.
+You have read/write access to $AGENT_CORE_PLUGIN_DIR/memory/tdd_focused_engineer.md.
 
 Update it yourself when:
 - A human corrects or overrides something you proposed
