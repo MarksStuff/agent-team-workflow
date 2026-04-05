@@ -237,6 +237,7 @@ def run_team_in_repo(
     repo_path: Path,
     worktree_path: Path,
     start_message: str,
+    test_cmd: str | None = None,
 ) -> int:
     """Launch an interactive claude agent team session rooted in the target repo.
 
@@ -251,6 +252,8 @@ def run_team_in_repo(
         repo_path: Path to target repo (claude's working dir)
         worktree_path: Path to .agent-design/ worktree (added as readable dir)
         start_message: Initial message delivered as the first turn
+        test_cmd: Optional shell command to run tests when gating task completion.
+                  If provided, hook scripts are wired up via .claude/settings.json.
 
     Returns:
         Exit code from claude process
@@ -262,19 +265,45 @@ def run_team_in_repo(
         env["ANTHROPIC_API_KEY"] = api_key
     env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] = "1"
 
-    result = subprocess.run(
-        [
-            "claude",
-            "--dangerously-skip-permissions",
-            *_plugin_flags(),
-            "--agent",
-            "eng_manager",
-            "--add-dir",
-            str(worktree_path),
-            "--",
-            start_message,
-        ],
-        cwd=str(repo_path),
-        env=env,
-    )
+    settings_path: Path | None = None
+    if test_cmd is not None:
+        hooks_dir = Path(__file__).parent.parent / "scripts" / "hooks"
+        settings = {
+            "hooks": {
+                "PreToolUse": [
+                    {
+                        "matcher": "TaskUpdate",
+                        "hooks": [{"type": "command", "command": str(hooks_dir / "task_completed.sh")}],
+                    }
+                ],
+                "Stop": [{"hooks": [{"type": "command", "command": str(hooks_dir / "teammate_idle.sh")}]}],
+            }
+        }
+        claude_dir = repo_path / ".claude"
+        claude_dir.mkdir(exist_ok=True)
+        settings_path = claude_dir / "settings.json"
+        settings_path.write_text(json.dumps(settings, indent=2))
+        env["TEST_CMD"] = test_cmd
+        env["REPO_PATH"] = str(repo_path)
+
+    try:
+        result = subprocess.run(
+            [
+                "claude",
+                "--dangerously-skip-permissions",
+                *_plugin_flags(),
+                "--agent",
+                "eng_manager",
+                "--add-dir",
+                str(worktree_path),
+                "--",
+                start_message,
+            ],
+            cwd=str(repo_path),
+            env=env,
+        )
+    finally:
+        if settings_path is not None and settings_path.exists():
+            settings_path.unlink()
+
     return result.returncode
