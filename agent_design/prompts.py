@@ -41,14 +41,14 @@ Write BASELINE.md now. Do not ask for confirmation.
 STAGE_1_INITIAL_DRAFT = """\
 Feature request: {feature_request}
 
-Read BASELINE.md in the current directory.
+Read .agent-design/BASELINE.md.
 
-Write the initial DESIGN.md. Before writing, identify explicitly:
+Write the initial .agent-design/DESIGN.md. Before writing, identify explicitly:
 - What is IN scope
 - What is OUT of scope
 - What assumptions you are making
 
-DESIGN.md structure:
+.agent-design/DESIGN.md structure:
 1. Scope — requirements, non-requirements, explicit assumptions
 2. Proposed approach and high-level architecture
 3. Key components and their responsibilities
@@ -56,8 +56,8 @@ DESIGN.md structure:
 5. Open questions for the team
 
 Also create:
-- DISCUSSION.md with header: # Design Discussion
-- DECISIONS.md with header: # Design Decisions
+- .agent-design/DISCUSSION.md with header: # Design Discussion
+- .agent-design/DECISIONS.md with header: # Design Decisions
 
 Write all three files now. Do not ask for confirmation.
 """
@@ -76,10 +76,10 @@ Task: continue the design workflow for the above feature.
 Available specialists: {available_specialists}
 
 Read the worktree before your first response:
-- BASELINE.md — codebase context
-- DESIGN.md — current draft (if it exists)
-- DISCUSSION.md — prior team discussion
-- feedback/ — any human feedback not yet incorporated
+- .agent-design/BASELINE.md — codebase context
+- .agent-design/DESIGN.md — current draft (if it exists)
+- .agent-design/DISCUSSION.md — prior team discussion
+- .agent-design/feedback/ — any human feedback not yet incorporated
 
 Based on what you read, decide what phase this session covers and tell the
 team in your opening message. Do not wait to be told.
@@ -92,7 +92,7 @@ Task: implement the above feature using the design in .agent-design/DESIGN.md
 
 Available specialists: {available_specialists}
 
-Before spawning the team: read DESIGN.md and identify which section(s) are
+Before spawning the team: read .agent-design/DESIGN.md and identify which section(s) are
 relevant to this feature. State those section(s) explicitly in your opening
 message — "We are implementing §X and §Y; everything else is out of scope."
 Do not spawn the team until you have done this scoping step.
@@ -105,7 +105,7 @@ Task: resume the implementation sprint for the above feature.
 
 Available specialists: {available_specialists}
 
-Before resuming: read DESIGN.md to re-establish which section(s) are in scope
+Before resuming: read .agent-design/DESIGN.md to re-establish which section(s) are in scope
 for this feature, and read TASKS.md to see what is done and what remains.
 State the current status in your opening message before calling on the team.
 """
@@ -237,6 +237,101 @@ def build_remember_start(
         correction=correction,
         project_slug=project_slug,
         date=date,
+    ).strip()
+
+
+_RETRO_MESSAGE = """\
+Sprint retrospective for project: {project_slug}
+Date: {date}
+
+You are the Retrospective Facilitator. Run a structured retrospective:
+
+1. Read the following files (if they exist):
+   - DISCUSSION.md — team discussion log
+   - TASKS.md — implementation task board
+   - DECISIONS.md — resolved and deadlocked decisions
+
+2. Identify friction patterns: repeated blockers, communication gaps, design
+   gaps discovered late, test/implementation ordering issues, anything that
+   slowed the team down.
+
+3. Address each agent in turn. Ask them to self-update their own memory file
+   at <CORE>/memory/<their-name>.md (where CORE is the path from
+   ~/.agent-design/core_plugin_dir) with any lessons from this sprint.
+   Use the established format (## Corrections & Overrides, YYYY-MM-DD [project]).
+
+4. Verify pickup: confirm that at least one agent has self-updated. If no
+   agent self-updated after a substantive sprint, flag it and prompt the most
+   relevant agent to reconsider.
+
+5. Produce RETRO.md in the current directory with this exact format:
+
+# Retrospective — {project_slug} — {date}
+## What Went Well
+## Friction Points
+## Action Items
+## Prompt Suggestions (pending human review)
+- [PS-1] <agent-file>.md: <suggestion text>
+
+The Prompt Suggestions section lists concrete wording changes to agent
+definition files that would address the friction points. Do not write to
+other agents' memory files directly — each agent self-updates.
+"""
+
+_APPLY_SUGGESTION_MESSAGE = """\
+Apply prompt suggestion {suggestion_id} to an agent definition file.
+
+Suggestion ID: {suggestion_id}
+Agent file: {agent_file}
+Change to make: {suggestion_text}
+
+The full path to the agent definition file is:
+  <AGENT_CORE_PLUGIN_DIR>/agents/{agent_file}
+
+where AGENT_CORE_PLUGIN_DIR is available as an environment variable.
+
+Steps:
+1. Read the agent definition file at the path above.
+2. Make the minimal targeted edit described in the suggestion text.
+3. Write the updated content back to the file.
+4. Confirm what was changed (quote the before and after).
+"""
+
+
+def build_retro_start(project_slug: str, date: str) -> str:
+    """Build the start message for a retrospective session.
+
+    Instructs the Retrospective Facilitator to read sprint artefacts,
+    coordinate agent memory self-updates, and produce RETRO.md.
+
+    Args:
+        project_slug: Short identifier for the project (e.g., 'news-reader')
+        date: Date string for the retrospective (e.g., '2026-04-05')
+
+    Returns:
+        Start message string for run_print_team()
+    """
+    return _RETRO_MESSAGE.format(project_slug=project_slug, date=date).strip()
+
+
+def build_apply_suggestion_start(suggestion_id: str, agent_file: str, suggestion_text: str) -> str:
+    """Build the start message for an apply-suggestion session.
+
+    Instructs Claude to edit a specific agent definition file with the
+    minimal change described in the suggestion.
+
+    Args:
+        suggestion_id: Suggestion identifier (e.g., 'PS-1')
+        agent_file: Agent definition filename (e.g., 'architect.md')
+        suggestion_text: The wording change to apply
+
+    Returns:
+        Start message string for run_apply_suggestion()
+    """
+    return _APPLY_SUGGESTION_MESSAGE.format(
+        suggestion_id=suggestion_id,
+        agent_file=agent_file,
+        suggestion_text=suggestion_text,
     ).strip()
 
 

@@ -180,6 +180,59 @@ def run_print_team(
     return result.returncode
 
 
+def run_apply_suggestion(
+    worktree_path: Path,
+    target_repo: Path,
+    task_prompt: str,
+) -> int:
+    """Run a non-interactive solo claude session to apply a prompt suggestion.
+
+    Used by the apply-suggestion command to edit agent definition files.
+    Unlike run_solo(), does NOT use --agent so Claude runs without a specific
+    agent identity. Adds PLUGIN_CORE as an extra readable/writable directory
+    so Claude can edit agent definition files.
+
+    Args:
+        worktree_path: Path to .agent-design/ worktree (claude's working dir)
+        target_repo: Path to target repo (added as readable directory)
+        task_prompt: Prompt describing which file to edit and what to change
+
+    Returns:
+        Exit code from claude process
+    """
+    _write_plugin_root()
+    env = _plugin_env(os.environ.copy())
+    api_key = _get_api_key()
+    if api_key:
+        env["ANTHROPIC_API_KEY"] = api_key
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as mcp_file:
+        json.dump({"mcpServers": {}}, mcp_file)
+        mcp_config_path = mcp_file.name
+
+    try:
+        result = subprocess.run(
+            [
+                "claude",
+                "--print",
+                "--dangerously-skip-permissions",
+                "--strict-mcp-config",
+                "--mcp-config",
+                mcp_config_path,
+                "--add-dir",
+                str(PLUGIN_CORE),
+                "--",
+                task_prompt,
+            ],
+            cwd=str(worktree_path),
+            env=env,
+        )
+    finally:
+        os.unlink(mcp_config_path)
+
+    return result.returncode
+
+
 def run_team_in_repo(
     repo_path: Path,
     worktree_path: Path,
