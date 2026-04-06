@@ -403,6 +403,44 @@ def build_apply_suggestion_start(suggestion_id: str, agent_file: str, suggestion
     ).strip()
 
 
+_REFRESH_DOMAIN_MESSAGE = """\
+You are a domain expert agent. Your task is to refresh your volatile knowledge.
+
+Steps:
+1. Read ~/.agent-design/core_plugin_dir to get the absolute path to the core plugin (CORE).
+2. Read your memory file at <CORE>/memory/{agent_name}.md.
+3. For each URL listed in your "Authoritative Sources" section:
+   - Fetch the page and compare its content to what you have recorded.
+   - Note any additions, removals, or changes.
+4. Update the "Volatile Knowledge" section with current information.
+5. Update the "verified:" date in the Volatile Knowledge header to: {today}.
+6. If a source was unreachable or you could not verify an entry, move it to "Pending Refresh"
+   with a note explaining what you could not verify.
+7. Write the updated memory file back to <CORE>/memory/{agent_name}.md.
+
+After writing, confirm: state what changed and what was verified without changes.
+"""
+
+
+def build_refresh_domain_start(agent_name: str, today: str) -> str:
+    """Build the start message for a refresh-domain session.
+
+    Instructs the named domain expert to refresh its volatile knowledge
+    by checking its authoritative sources.
+
+    Args:
+        agent_name: Name of the domain expert agent (e.g., 'claude_expert')
+        today: ISO date string (e.g., '2026-04-05')
+
+    Returns:
+        Start message string for run_solo()
+    """
+    return _REFRESH_DOMAIN_MESSAGE.format(
+        agent_name=agent_name,
+        today=today,
+    ).strip()
+
+
 def build_review_feedback_start(pr_comments: str, pr_url: str, available_specialists: str | None = None) -> str:
     """Build the start message for a review-feedback session.
 
