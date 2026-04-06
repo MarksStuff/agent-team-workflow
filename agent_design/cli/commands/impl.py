@@ -129,7 +129,13 @@ def _commit_and_push(
     is_flag=True,
     help="Resume an existing implementation sprint. Assumes impl branch exists.",
 )
-def impl(repo_path: Path, resume: bool) -> None:
+@click.option(
+    "--test-cmd",
+    default="python -m pytest --tb=short -q",
+    show_default=True,
+    help="Shell command to run tests when gating task completion.",
+)
+def impl(repo_path: Path, resume: bool, test_cmd: str) -> None:
     """Run a self-organising implementation sprint.
 
     The agent team reads the approved DESIGN.md, self-organises into a sprint,
@@ -217,7 +223,7 @@ def impl(repo_path: Path, resume: bool) -> None:
 
     # ── Launch team session ─────────────────────────────────────────────────
     start_message = build_impl_start(feature_request=state.feature_request, is_resume=resume)
-    rc = run_team_in_repo(repo_path, worktree_path, start_message)
+    rc = run_team_in_repo(repo_path, worktree_path, start_message, test_cmd=test_cmd)
     if rc != 0:
         console.print(f"[yellow]⚠ Claude exited with code {rc}[/yellow]")
 
