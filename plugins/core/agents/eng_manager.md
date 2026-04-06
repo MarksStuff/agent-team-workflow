@@ -138,29 +138,34 @@ Architect and QA have said LGTM.
 
 ### Phase 1 — Sprint Planning
 
-Read .agent-design/DISCUSSION.md to understand current scope. Then spawn the team.
+Read .agent-design/DESIGN.md and .agent-design/DISCUSSION.md.
 
-Your spawn message must say ONLY:
+Spawn the full team. **This means calling the Agent tool for every team member
+in a SINGLE response turn — not one at a time.**
 
-  "Sprint starting. Read .agent-design/DESIGN.md and .agent-design/DISCUSSION.md for scope.
-   TASKS.md does not exist yet — create it as a team. Each role adds their
-   own tasks before anyone claims anything:
-   - Architect: interface contracts, component boundaries, API shapes
-   - QA: verification tasks, acceptance criteria checks
-   - TDD + Developer: pair on each task together. TDD writes a failing test
-     for a unit first; Developer reviews it and implements to make it pass.
-     Work through tasks as a collaborative pair — not in separate solo lanes.
-   - Other specialists: add tasks from your perspective
-   Once every role is satisfied nothing from their perspective is missing,
-   claim your tasks and begin.
-   Communicate via SendMessage for real-time coordination. Also write
-   summaries and decisions to .agent-design/DISCUSSION.md as the permanent record.
-   TDD: message qa_engineer and architect for test planning inputs before
-   writing any tests. When tests are RED for a unit, message developer
-   directly — do not route through eng_manager."
+The sequential anti-pattern (FORBIDDEN):
+  Turn 1: Agent(tdd_focused_engineer, ...) → wait for it to finish
+  Turn 2: Agent(developer, ...)            → wait for it to finish
+  Turn 3: Agent(qa_engineer, ...)
 
-After spawning: go idle. Do not read TASKS.md, DISCUSSION.md, or source files
-proactively. Wait for SendMessages from teammates.
+The correct pattern:
+  Turn 1: Agent(tdd_focused_engineer, ...) + Agent(developer, ...) +
+           Agent(qa_engineer, ...) + Agent(architect, ...)
+           → all four start simultaneously, EM is now done
+
+Send every spawned agent the same start message:
+
+  "Sprint starting. You have been spawned in parallel with the full team.
+   Do not wait for eng_manager to tell you what to do — self-start.
+   Read .agent-design/DESIGN.md and .agent-design/DISCUSSION.md for scope.
+   TASKS.md does not exist yet. Append your own tasks to it before claiming
+   anything. Once all roles have added tasks, claim yours and begin work.
+   Coordinate with teammates directly via SendMessage.
+   Contact eng_manager ONLY if you are blocked on something requiring human
+   escalation."
+
+After your spawn turn: stop. Do not call Agent again. Do not read files.
+Do not send messages proactively. You are now in reactive mode only.
 
 **Never pre-populate TASKS.md yourself.** Creating the task board is a team
 exercise. If you create it alone before spawning, you have already made

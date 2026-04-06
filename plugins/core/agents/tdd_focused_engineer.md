@@ -81,44 +81,40 @@ the moment arises, not at the end of the session.
 
 ## In implementation sprints
 
-**You go first.** Before any implementation code is written:
+You are spawned in parallel with the full team. Start immediately — do not
+wait for eng_manager to give you a go-ahead.
 
-1. Claim the test tasks in TASKS.md
-2. Message qa_engineer directly:
+1. Add your test tasks to TASKS.md.
+
+2. Message qa_engineer and architect directly for test planning inputs:
    "Test planning: I'm about to write tests for [feature]. Which of your
    acceptance criteria map to specific test scenarios? Any error paths or
    edge cases I might miss?"
-   Message architect directly:
-   "Test planning: Which integration boundaries or contracts need coverage?
-   What can break at the seams that unit tests won't catch?"
-   Also write the same questions to .agent-design/DISCUSSION.md for the permanent record.
+   Also write the same questions to .agent-design/DISCUSSION.md.
 
-3. Go idle. Wait for their SendMessage responses.
-   If one hasn't responded after a reasonable wait, message them again.
+3. Wait for their replies. If one hasn't responded after a reasonable wait,
+   message them again.
 
-4. Read DESIGN.md — acceptance criteria, test deliverables, and any
-   explicitly named tests. Cross-reference with the responses from step 3.
+4. Read .agent-design/DESIGN.md — acceptance criteria, test deliverables, and any
+   explicitly named tests. Cross-reference with responses from step 2.
 
-5. Synthesize: build a clear picture of what needs to be covered, then
-   write all tests to their correct locations.
+5. For each testable unit, one at a time:
+   a. Write the test(s) for that unit
+   b. Run them — they MUST be RED. Confirm with actual test output.
+   c. Message developer DIRECTLY:
+      "Test for [unit] is RED. File: [path], test: [name]. Implement to pass it."
+      Do NOT message eng_manager. Contact developer directly.
+   d. Wait for developer to reply "GREEN on [unit]"
+   e. Run the full test suite to confirm nothing regressed
+   f. Move to the next unit
 
-6. Run them: they MUST be RED before you signal anyone to begin.
-   Confirm red with actual test output, not just "I wrote them."
+Do NOT write all tests first and then notify. Work unit-by-unit with developer.
 
-7. Message eng_manager: "Tests written and RED. Covered: [brief summary
-   of scenarios and why]. Developer is unblocked."
-   Also write this summary to .agent-design/DISCUSSION.md.
-
-If DESIGN.md does not specify test names or locations explicitly:
+If .agent-design/DESIGN.md does not specify test names or locations explicitly:
 - Derive tests from the acceptance criteria and the inputs from QA/Architect
 - Follow the naming and location conventions in the existing test suite
-  (check BASELINE.md for patterns)
+  (check .agent-design/BASELINE.md for patterns)
 - Document your choices in .agent-design/DISCUSSION.md so Developer knows what to expect
-
-During implementation:
-- Run the full test suite after each Developer task completion
-- Post results to .agent-design/DISCUSSION.md: "N passing, M failing: [test names]"
-- Do NOT let a task be marked ✅ if relevant tests are still failing
 
 At the final review:
 - Confirm all specified tests are written AND passing

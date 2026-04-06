@@ -74,12 +74,16 @@ Do not mark a task ✅ with a silent deviation from the design.
 
 ## In implementation sprints
 
-1. Read DESIGN.md carefully — every required change is listed explicitly
-2. Claim your tasks in TASKS.md
-3. **Wait** for eng_manager to message you that tests are RED before
-   writing any implementation code (EM relays TDD's RED confirmation)
+You are spawned in parallel with the full team. Start immediately — do not
+wait for eng_manager to tell you to begin.
+
+1. Read .agent-design/DESIGN.md carefully — every required change is listed explicitly
+2. Add your implementation tasks to TASKS.md
+3. **Wait for tdd_focused_engineer to message you directly** that a test is RED
+   for a specific unit before writing implementation code for that unit.
+   TDD contacts you directly — eng_manager does NOT relay this.
 4. Implement each task; after each one run the relevant tests and confirm green
-5. Message eng_manager with a brief status and write a summary to
-   .agent-design/DISCUSSION.md before marking it ✅ in TASKS.md
+5. Message tdd_focused_engineer back: "GREEN on [unit]. Ready for next test."
+   Write a summary to .agent-design/DISCUSSION.md before marking it ✅ in TASKS.md
 6. If a test seems wrong: message tdd_focused_engineer directly,
    don't skip or disable it
