@@ -403,6 +403,45 @@ def build_apply_suggestion_start(suggestion_id: str, agent_file: str, suggestion
     ).strip()
 
 
+_REFRESH_DOMAIN_MESSAGE = """\
+You are {agent_name}, a domain expert agent.
+
+Your memory file is at: {memory_path}
+
+Task: refresh your volatile knowledge.
+
+Steps:
+1. Read your memory file at the path above.
+2. Locate the "Volatile Knowledge" section and identify its last-verified date.
+3. Check each URL listed under "Authoritative Sources" for changes since that date.
+4. Rewrite the "Volatile Knowledge" section with updated content and today's date.
+5. Move anything you cannot verify to the "Pending Refresh" section.
+6. Write the updated memory file back to the same path.
+
+Do not ask for confirmation. Perform all steps now.
+"""
+
+
+def build_refresh_domain_start(agent_name: str, memory_path: Path) -> str:
+    """Build the task prompt for a domain expert memory refresh session.
+
+    Instructs the domain expert agent to read its memory file, check its
+    authoritative sources for changes, update the Volatile Knowledge section,
+    and move unverified items to Pending Refresh.
+
+    Args:
+        agent_name: Bare agent name (e.g., 'claude_expert')
+        memory_path: Absolute path to the agent's memory file
+
+    Returns:
+        Task prompt string for run_solo()
+    """
+    return _REFRESH_DOMAIN_MESSAGE.format(
+        agent_name=agent_name,
+        memory_path=str(memory_path),
+    ).strip()
+
+
 def build_review_feedback_start(pr_comments: str, pr_url: str, available_specialists: str | None = None) -> str:
     """Build the start message for a review-feedback session.
 
