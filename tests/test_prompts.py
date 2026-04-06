@@ -578,3 +578,122 @@ def test_build_review_feedback_start_does_not_take_date() -> None:
             pr_url="https://github.com/o/r/pull/1",
             date="2026-04-04",
         )
+
+
+# ---------------------------------------------------------------------------
+# build_refresh_domain_start — Phase 10
+#
+# Spec (DESIGN.md § "Refreshing a domain expert"):
+#   build_refresh_domain_start(agent_name: str, memory_path: Path) -> str
+#
+# Required output tokens (ALL must be asserted individually):
+# 1. Returns a non-empty string
+# 2. Contains the agent_name
+# 3. Contains the memory_path (or str of it)
+# 4. Contains instructions to check authoritative sources
+# 5. Contains instruction to update "Volatile Knowledge" section
+# 6. Contains instruction to flag unverified items as "Pending Refresh"
+# ---------------------------------------------------------------------------
+
+
+def test_build_refresh_domain_start_is_importable() -> None:
+    """build_refresh_domain_start is importable from agent_design.prompts (Phase 10)."""
+    from agent_design.prompts import build_refresh_domain_start  # noqa: F401
+
+
+def test_build_refresh_domain_start_returns_non_empty_string() -> None:
+    """Returns a non-empty string for any valid input."""
+    from agent_design.prompts import build_refresh_domain_start
+
+    result = build_refresh_domain_start(
+        agent_name="claude_expert",
+        memory_path=Path("/some/path/claude_expert.md"),
+    )
+    assert isinstance(result, str)
+    assert len(result) > 0
+
+
+def test_build_refresh_domain_start_contains_agent_name() -> None:
+    """Token 2: the returned string contains the agent_name."""
+    from agent_design.prompts import build_refresh_domain_start
+
+    result = build_refresh_domain_start(
+        agent_name="claude_expert",
+        memory_path=Path("/some/path/claude_expert.md"),
+    )
+    assert "claude_expert" in result
+
+
+def test_build_refresh_domain_start_contains_memory_path() -> None:
+    """Token 3: the returned string contains the memory_path (or str of it)."""
+    from agent_design.prompts import build_refresh_domain_start
+
+    memory_path = Path("/some/path/agent_systems_expert.md")
+    result = build_refresh_domain_start(
+        agent_name="agent_systems_expert",
+        memory_path=memory_path,
+    )
+    assert str(memory_path) in result
+
+
+def test_build_refresh_domain_start_contains_authoritative_sources_instruction() -> None:
+    """Token 4: prompt instructs agent to check authoritative sources."""
+    from agent_design.prompts import build_refresh_domain_start
+
+    result = build_refresh_domain_start(
+        agent_name="claude_expert",
+        memory_path=Path("/some/path/claude_expert.md"),
+    )
+    lowered = result.lower()
+    assert "authoritative" in lowered or "sources" in lowered, (
+        "Expected instruction to check authoritative sources in prompt"
+    )
+
+
+def test_build_refresh_domain_start_contains_volatile_knowledge_update_instruction() -> None:
+    """Token 5: prompt instructs agent to update the 'Volatile Knowledge' section."""
+    from agent_design.prompts import build_refresh_domain_start
+
+    result = build_refresh_domain_start(
+        agent_name="claude_expert",
+        memory_path=Path("/some/path/claude_expert.md"),
+    )
+    assert "Volatile Knowledge" in result, (
+        "Expected instruction to update 'Volatile Knowledge' section in prompt"
+    )
+
+
+def test_build_refresh_domain_start_contains_pending_refresh_instruction() -> None:
+    """Token 6: prompt instructs agent to flag unverified items as 'Pending Refresh'."""
+    from agent_design.prompts import build_refresh_domain_start
+
+    result = build_refresh_domain_start(
+        agent_name="claude_expert",
+        memory_path=Path("/some/path/claude_expert.md"),
+    )
+    assert "Pending Refresh" in result, (
+        "Expected instruction to flag unverified items as 'Pending Refresh' in prompt"
+    )
+
+
+def test_build_refresh_domain_start_different_agent_name_appears() -> None:
+    """Agent name is correctly interpolated regardless of which agent is passed."""
+    from agent_design.prompts import build_refresh_domain_start
+
+    result = build_refresh_domain_start(
+        agent_name="agent_systems_expert",
+        memory_path=Path("/tmp/agent_systems_expert.md"),
+    )
+    assert "agent_systems_expert" in result
+
+
+def test_build_refresh_domain_start_different_memory_path_appears() -> None:
+    """Memory path is correctly interpolated regardless of which path is passed."""
+    from agent_design.prompts import build_refresh_domain_start
+
+    memory_path = Path("/home/user/.claude/agent-memory/claude_expert.md")
+    result = build_refresh_domain_start(
+        agent_name="claude_expert",
+        memory_path=memory_path,
+    )
+    assert str(memory_path) in result
