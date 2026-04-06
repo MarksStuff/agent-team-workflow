@@ -1,36 +1,51 @@
-# TASKS.md — Phase 7: Memory Infrastructure
+# TASKS.md — Phase 10: Domain Experts and Proposal Escalation
 
 ## Scope
-§ "Human Intervention → Memory Update" + § "PR Feedback → Memory Update" + § "CLI Command Map"
 
-Two new commands:
-- `agent-design remember "<correction>"` — `--print` multi-agent session; each agent self-updates if relevant; Retrospective Facilitator verifies pickup
-- `agent-design review-feedback --pr <url>` — same pattern, using GitHub PR review comments fetched via `gh` CLI
+**§ Domain Expert Agents** (DESIGN.md lines 230–481)
+- Domain experts as question-answering consultants (don't write code)
+- Global vs repo-local placement strategy
+- On-demand spawning by EM when requested
+- Stable vs volatile knowledge separation
+- Memory file structure (stable/volatile/sources/pending)
+- **Escalation flow**: EM proposes new agent, blocks relevant tasks, notifies human
+- Proposal file format and review/apply cycle
 
-Supporting additions:
-- `run_print_team()` in `launcher.py` — `--print` session with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
-- `build_remember_start()` and `build_review_feedback_start()` in `prompts.py`
-- Both commands registered in `cli/main.py`
+**§ CLI Commands** (DESIGN.md lines 1027–1050)
+- `agent-design refresh-domain --agent <name>`
+- `agent-design review-proposal <name>`
+- `agent-design apply-proposal <name>`
 
-Out of scope: Retrospective Facilitator agent definition, hooks, domain experts.
+**§ Deliverables**
+1. Two domain expert agent files for this repo:
+   - `.claude/agents/claude_expert.md` (Claude Code/API expertise)
+   - `.claude/agents/agent_systems_expert.md` (multi-agent systems expertise)
+2. Memory file structure defined for both
+3. Three CLI commands implemented and tested
+4. End-to-end validation: full escalation cycle works
+
+**Out of scope:** Other phases, retrospective facilitator, hooks.
 
 ---
 
+## Sprint Planning (Phase 1)
+
+Agents: claim tasks below based on your expertise. TDD goes first.
+
 | Task | Owner | Status |
 |---|---|---|
-| Review interface contracts for `run_print_team()`, `build_remember_start()`, `build_review_feedback_start()`, and both commands; flag any design gaps before implementation begins | Architect | ✅ done |
-| Define exact signatures and subprocess flag contract for `run_print_team()`, both `build_*` functions, and `_fetch_pr_comments()` | Architect | ✅ done |
-| Define acceptance criteria for `remember` and `review-feedback` commands (success paths, error paths, edge cases) | QA Engineer | ✅ done |
-| Write tests for `build_remember_start()` in `tests/test_prompts.py` (RED first) | TDD Focussed Engineer | ✅ done |
-| Write tests for `build_review_feedback_start()` in `tests/test_prompts.py` (RED first) | TDD Focussed Engineer | ✅ done |
-| Write tests for `run_print_team()` in `tests/test_launcher.py` (RED first) | TDD Focussed Engineer | ✅ done |
-| Write tests for `remember` CLI command in `tests/test_remember.py` (RED first) | TDD Focussed Engineer | ✅ done |
-| Write tests for `review_feedback` CLI command in `tests/test_review_feedback.py` (RED first) | TDD Focussed Engineer | ✅ done |
-| Write tests for `_fetch_pr_comments()` helper in isolation (no real `gh` subprocess) in `tests/test_review_feedback.py` | TDD Focussed Engineer | ✅ done |
-| Implement `run_print_team()` in `agent_design/launcher.py` | Developer | ✅ done |
-| Implement `build_remember_start()` and `build_review_feedback_start()` in `agent_design/prompts.py` | Developer | ✅ done |
-| Implement `agent_design/cli/commands/remember.py` | Developer | ✅ done |
-| Implement `agent_design/cli/commands/review_feedback.py` (including `gh` CLI fetch for PR comments) | Developer | ✅ done |
-| Wire `remember` and `review_feedback` commands into `agent_design/cli/main.py` | Developer | ✅ done |
-| Final acceptance review: verify both commands satisfy all acceptance criteria; confirm tests pass; LGTM or raise issues | QA Engineer | ⬜ unclaimed |
-| Final architecture review: confirm implementation matches design; no drift from design doc; LGTM or raise issues | Architect | ⬜ unclaimed |
+| Review design §Domain Expert Agents and flag any ambiguities or gaps before implementation begins | Architect | ⬜ unclaimed |
+| Define acceptance criteria for the two domain expert agent files (observable structure, content requirements) | QA Engineer | ⬜ unclaimed |
+| Define acceptance criteria for `refresh-domain`, `review-proposal`, and `apply-proposal` commands | QA Engineer | ⬜ unclaimed |
+| Write tests for domain expert agent file structure (RED first) | TDD Focussed Engineer | ⬜ unclaimed |
+| Write tests for `refresh-domain` command (RED first) | TDD Focussed Engineer | ⬜ unclaimed |
+| Write tests for `review-proposal` command (RED first) | TDD Focussed Engineer | ⬜ unclaimed |
+| Write tests for `apply-proposal` command (RED first) | TDD Focussed Engineer | ⬜ unclaimed |
+| Write `claude_expert.md` agent file with stable/volatile knowledge structure | Developer | ⬜ unclaimed |
+| Write `agent_systems_expert.md` agent file with stable/volatile knowledge structure | Developer | ⬜ unclaimed |
+| Implement `refresh-domain` command in `agent_design/cli/commands/` | Developer | ⬜ unclaimed |
+| Implement `review-proposal` command in `agent_design/cli/commands/` | Developer | ⬜ unclaimed |
+| Implement `apply-proposal` command in `agent_design/cli/commands/` | Developer | ⬜ unclaimed |
+| Wire all three commands into `agent_design/cli/main.py` | Developer | ⬜ unclaimed |
+| Final acceptance review: verify domain expert files and commands satisfy all acceptance criteria | QA Engineer | ⬜ unclaimed |
+| Final architecture review: confirm implementation matches design, no drift | Architect | ⬜ unclaimed |
